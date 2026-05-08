@@ -4,7 +4,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
-const API_URL = process.env.SWIFTSIGN_URL || "https://swiftsign-nine.vercel.app";
+const API_URL = process.env.SWIFTSIGN_API_URL ||
+    process.env.SWIFTSIGN_URL ||
+    "https://swiftsign.ca";
 const API_KEY = process.env.SWIFTSIGN_API_KEY;
 if (!API_KEY) {
     console.error("SWIFTSIGN_API_KEY environment variable is required");

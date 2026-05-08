@@ -251,10 +251,13 @@ Content-Type: application/json
           </p>
 
           <div className="docs-cta">
-            <p>Ready to send your first envelope?</p>
-            <Link href="/#cta" className="btn btn-primary">
-              Get your API key <ArrowRight />
-            </Link>
+            <p>SwiftSign is in private beta — request access to get an API key.</p>
+            <a
+              href="mailto:hello@swiftsign.ca?subject=SwiftSign%20beta%20access"
+              className="btn btn-primary"
+            >
+              Request access <ArrowRight />
+            </a>
           </div>
         </main>
       </div>

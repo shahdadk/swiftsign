@@ -41,6 +41,9 @@ yarn-error.log*
 .env.local
 .env.*.local
 
+# npm auth tokens (from npm login)
+mcp/.npmrc
+
 # vercel
 .vercel
 

@@ -55,13 +55,30 @@ export default function LoginPage() {
               </div>
               <h2 className="text-lg font-semibold text-gray-900 text-center mb-1">Check your email</h2>
               <p className="text-sm text-gray-500 text-center">
-                We sent a sign-in link to <strong>{email}</strong>. Click the link to access your dashboard.
+                If <strong>{email}</strong> is on the beta allowlist, a sign-in link is on its way.
+                Otherwise{' '}
+                <a
+                  href="mailto:hello@swiftsign.ca?subject=SwiftSign%20beta%20access"
+                  className="text-blue-600 hover:underline"
+                >
+                  request access
+                </a>
+                .
               </p>
             </>
           ) : (
             <>
               <h2 className="text-lg font-semibold text-gray-900 mb-1">Sign in to SwiftSign</h2>
-              <p className="text-sm text-gray-500 mb-6">Enter your email and we&apos;ll send you a sign-in link.</p>
+              <p className="text-sm text-gray-500 mb-6">
+                Private beta — only invited emails can sign in.{' '}
+                <a
+                  href="mailto:hello@swiftsign.ca?subject=SwiftSign%20beta%20access"
+                  className="text-blue-600 hover:underline"
+                >
+                  Request access
+                </a>
+                .
+              </p>
 
               <form onSubmit={handleSubmit}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>

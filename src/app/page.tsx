@@ -25,7 +25,7 @@ export default function Home() {
         <div className="container hero-inner">
           <div className="kicker">
             <span className="dot" />
-            <span>MCP server for Claude Code · v0.4.1 out now</span>
+            <span>Private beta · invite only</span>
           </div>
 
           <h1 className="hero-h1">
@@ -45,8 +45,11 @@ export default function Home() {
           </div>
 
           <div className="hero-ctas">
-            <a href="#cta" className="btn btn-primary">
-              Get your API key <ArrowRight />
+            <a
+              href="mailto:hello@swiftsign.ca?subject=SwiftSign%20beta%20access"
+              className="btn btn-primary"
+            >
+              Request access <ArrowRight />
             </a>
             <a href="#demo" className="btn btn-ghost">
               <Terminal /> See the demo

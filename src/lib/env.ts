@@ -34,6 +34,11 @@ const ServerSchema = z.object({
   P12_CERT_PASSWORD: z.string().optional(),
 
   WEBHOOK_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+
+  // Comma-separated allowlist of emails permitted to sign in.
+  // If unset, signup is open to anyone. Set this to gate the magic-link flow
+  // for closed-beta / internal-use deployments.
+  ALLOWED_LOGIN_EMAILS: z.string().optional(),
 })
 
 type ServerEnv = z.infer<typeof ServerSchema>
@@ -60,6 +65,7 @@ const stub: ServerEnv = {
   P12_CERT_PATH: undefined,
   P12_CERT_PASSWORD: undefined,
   WEBHOOK_TIMEOUT_MS: 5000,
+  ALLOWED_LOGIN_EMAILS: undefined,
 }
 
 function loadEnv(): ServerEnv {
@@ -85,3 +91,14 @@ export const billingEnabled =
   !!env.STRIPE_WEBHOOK_SECRET &&
   !!env.STRIPE_PRICE_PRO_MONTHLY &&
   !!env.STRIPE_PRICE_TEAM_MONTHLY
+
+export const loginAllowlist: string[] | null = env.ALLOWED_LOGIN_EMAILS
+  ? env.ALLOWED_LOGIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+  : null
+
+export const signupOpen = loginAllowlist === null
+
+export function isEmailAllowed(email: string): boolean {
+  if (loginAllowlist === null) return true
+  return loginAllowlist.includes(email.trim().toLowerCase())
+}

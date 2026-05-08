@@ -6,6 +6,10 @@
     "swiftsign-mcp": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build"
@@ -13,6 +17,15 @@
   "keywords": ["mcp", "e-signature", "docusign", "claude-code", "swiftsign"],
   "author": "SwiftSign <hello@swiftsign.ca>",
   "license": "MIT",
+  "homepage": "https://swiftsign.ca",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shahdadk/swiftsign.git",
+    "directory": "mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/shahdadk/swiftsign/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"
   },

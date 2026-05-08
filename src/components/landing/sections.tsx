@@ -149,7 +149,7 @@ export function Pricing() {
         "Routing-order signing",
         "ESIGN/UETA/PIPEDA sealed PDFs",
       ],
-      cta: "Get API key",
+      cta: "Request access",
       ctaClass: "btn-accent",
       featured: true,
     },
@@ -237,19 +237,22 @@ export function FinalCTA() {
           <InstallCard />
         </div>
         <div className="finalcta-actions">
-          <Link href="/dashboard" className="btn btn-primary">
-            Get your API key <ArrowRight />
-          </Link>
+          <a
+            href="mailto:hello@swiftsign.ca?subject=SwiftSign%20beta%20access"
+            className="btn btn-primary"
+          >
+            Request access <ArrowRight />
+          </a>
           <Link href="/docs" className="btn btn-ghost">
             Read the docs
           </Link>
         </div>
         <div className="finalcta-meta mono">
-          <span>no credit card</span>
+          <span>private beta</span>
           <span className="sep">·</span>
-          <span>unlimited during beta</span>
+          <span>invite only</span>
           <span className="sep">·</span>
-          <span>cancel from the CLI</span>
+          <span>email us to get in</span>
         </div>
       </div>
     </section>
