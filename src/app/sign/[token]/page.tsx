@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { SigningForm } from "@/components/signing-form";
 import { emit } from "@/lib/webhooks";
+import { getSession } from "@/lib/auth";
 
 interface SignPageProps {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }
 
 export async function generateMetadata({ params }: SignPageProps) {
@@ -24,8 +26,9 @@ export async function generateMetadata({ params }: SignPageProps) {
   };
 }
 
-export default async function SignPage({ params }: SignPageProps) {
+export default async function SignPage({ params, searchParams }: SignPageProps) {
   const { token } = await params;
+  const { preview } = await searchParams;
 
   const recipient = await prisma.recipient.findUnique({
     where: { signingToken: token },
@@ -106,30 +109,44 @@ export default async function SignPage({ params }: SignPageProps) {
     );
   }
 
-  // Log document viewed (track first-view for the envelope.viewed webhook)
-  const isFirstView = recipient.viewedAt === null;
-  await prisma.$transaction([
-    prisma.recipient.update({
-      where: { id: recipient.id },
-      data: { viewedAt: recipient.viewedAt ?? new Date() },
-    }),
-    prisma.auditLog.create({
-      data: {
-        envelopeId: envelope.id,
-        event: "DOCUMENT_VIEWED",
-        actorName: recipient.name,
-        actorEmail: recipient.email,
-      },
-    }),
-  ]);
+  // Preview mode: the envelope sender can view ANY recipient's signing page
+  // by passing ?preview=1, with their dashboard cookie session. Skips the
+  // viewedAt update, DOCUMENT_VIEWED audit log, and envelope.viewed webhook
+  // so the recipient's audit trail stays clean.
+  let isPreview = false;
+  if (preview === "1") {
+    const session = await getSession();
+    if (session && session.id === envelope.userId) {
+      isPreview = true;
+    }
+  }
 
-  if (isFirstView) {
-    emit(envelope.userId, "envelope.viewed", {
-      envelopeId: envelope.id,
-      recipientId: recipient.id,
-      recipientEmail: recipient.email,
-      recipientName: recipient.name,
-    });
+  if (!isPreview) {
+    // Log document viewed (track first-view for the envelope.viewed webhook)
+    const isFirstView = recipient.viewedAt === null;
+    await prisma.$transaction([
+      prisma.recipient.update({
+        where: { id: recipient.id },
+        data: { viewedAt: recipient.viewedAt ?? new Date() },
+      }),
+      prisma.auditLog.create({
+        data: {
+          envelopeId: envelope.id,
+          event: "DOCUMENT_VIEWED",
+          actorName: recipient.name,
+          actorEmail: recipient.email,
+        },
+      }),
+    ]);
+
+    if (isFirstView) {
+      emit(envelope.userId, "envelope.viewed", {
+        envelopeId: envelope.id,
+        recipientId: recipient.id,
+        recipientEmail: recipient.email,
+        recipientName: recipient.name,
+      });
+    }
   }
 
   // Check for saved signature adoption
@@ -160,26 +177,34 @@ export default async function SignPage({ params }: SignPageProps) {
   }));
 
   return (
-    <SigningForm
-      token={token}
-      envelope={{
-        id: envelope.id,
-        subject: envelope.subject,
-        message: envelope.message,
-        senderName: envelope.user.name ?? 'Unknown',
-        senderEmail: envelope.user.email,
-        senderCompany: envelope.user.company,
-      }}
-      recipient={{
-        id: recipient.id,
-        name: recipient.name,
-        email: recipient.email,
-      }}
-      documents={documents}
-      fields={fields}
-      savedSignature={savedAdoption?.signature ?? undefined}
-      savedInitials={savedAdoption?.initials ?? undefined}
-    />
+    <>
+      {isPreview && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-center text-sm text-amber-800 font-medium">
+          🔍 Preview mode — you&apos;re seeing this page as <b>{recipient.name}</b>.
+          Nothing you do here is saved. Don&apos;t click &ldquo;Complete Signing.&rdquo;
+        </div>
+      )}
+      <SigningForm
+        token={token}
+        envelope={{
+          id: envelope.id,
+          subject: envelope.subject,
+          message: envelope.message,
+          senderName: envelope.user.name ?? 'Unknown',
+          senderEmail: envelope.user.email,
+          senderCompany: envelope.user.company,
+        }}
+        recipient={{
+          id: recipient.id,
+          name: recipient.name,
+          email: recipient.email,
+        }}
+        documents={documents}
+        fields={fields}
+        savedSignature={savedAdoption?.signature ?? undefined}
+        savedInitials={savedAdoption?.initials ?? undefined}
+      />
+    </>
   );
 }
 
