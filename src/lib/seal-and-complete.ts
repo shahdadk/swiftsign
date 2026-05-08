@@ -10,6 +10,10 @@ import { logger } from './logger'
 /**
  * Called when the last signer completes. Seals all documents, generates the
  * Certificate of Completion, updates the DB, and sends completion emails.
+ *
+ * Idempotent: if the envelope is already COMPLETED, returns immediately
+ * without re-sealing or re-emailing. This prevents duplicate certificates
+ * with diverging timestamps when the route handler retries.
  */
 export async function sealAndComplete(envelopeId: string): Promise<void> {
   // 1. Load envelope with all related data
@@ -33,6 +37,15 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
       },
     },
   })
+
+  // Idempotency guard
+  if (envelope.completedAt || envelope.status === 'COMPLETED') {
+    logger.info('sealAndComplete called on already-completed envelope', {
+      envelopeId,
+      completedAt: envelope.completedAt,
+    })
+    return
+  }
 
   const documentHashes: Record<string, string> = {}
 
@@ -153,50 +166,48 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
     },
   })
 
-  // 7. Send completion emails to all recipients + sender
+  // 7. Send completion emails to all recipients + sender (parallel, best-effort).
   const baseUrl = env.NEXT_PUBLIC_APP_URL
+  const senderDownloadUrl = `${baseUrl}/api/envelopes/${envelopeId}/download`
 
-  // Send to each recipient (signers + CC)
-  for (const recipient of envelope.recipients) {
-    try {
-      const downloadUrl = `${baseUrl}/api/envelopes/${envelopeId}/download?token=${recipient.signingToken}`
+  const emailJobs = [
+    ...envelope.recipients.map((recipient) => ({
+      to: recipient.email,
+      name: recipient.name,
+      url: `${baseUrl}/api/envelopes/${envelopeId}/download?token=${recipient.signingToken}`,
+      kind: 'recipient' as const,
+    })),
+    {
+      to: envelope.user.email,
+      name: envelope.user.name ?? 'User',
+      url: senderDownloadUrl,
+      kind: 'sender' as const,
+    },
+  ]
 
-      await sendCompleted(
-        recipient.email,
-        recipient.name,
-        envelope.subject,
-        downloadUrl
-      )
-
-      await logAudit(envelopeId, 'EMAIL_SENT', {
-        metadata: {
-          type: 'completion',
-          recipientEmail: recipient.email,
-          recipientName: recipient.name,
-        },
-      })
-    } catch (err) {
-      logger.error(err, {
-        op: 'sendCompleted',
-        recipient: recipient.email,
-      })
-    }
-  }
-
-  // Send to the sender (envelope owner)
-  try {
-    // Sender downloads via API key, so give them a link without token
-    const senderDownloadUrl = `${baseUrl}/api/envelopes/${envelopeId}/download`
-    await sendCompleted(
-      envelope.user.email,
-      envelope.user.name ?? 'User',
-      envelope.subject,
-      senderDownloadUrl
-    )
-  } catch (err) {
-    logger.error(err, {
-      op: 'sendCompleted-sender',
-      sender: envelope.user.email,
+  await Promise.allSettled(
+    emailJobs.map(async (job) => {
+      try {
+        await sendCompleted(job.to, job.name, envelope.subject, job.url)
+        await logAudit(envelopeId, 'EMAIL_SENT', {
+          metadata: {
+            type: 'completion',
+            recipientEmail: job.to,
+            recipientName: job.name,
+            kind: job.kind,
+          },
+        })
+      } catch (err) {
+        logger.error(err, { op: 'sendCompleted', recipient: job.to, kind: job.kind })
+        await logAudit(envelopeId, 'EMAIL_BOUNCED', {
+          metadata: {
+            type: 'completion',
+            recipientEmail: job.to,
+            kind: job.kind,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        }).catch(() => {})
+      }
     })
-  }
+  )
 }

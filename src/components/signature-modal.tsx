@@ -242,8 +242,13 @@ export function SignatureModal({
               <div className="relative border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-white">
                 <canvas
                   ref={canvasRef}
-                  className="signature-canvas w-full"
-                  style={{ height: 160 }}
+                  className="signature-canvas w-full block"
+                  style={{
+                    height: 180,
+                    touchAction: "none",
+                    WebkitUserSelect: "none",
+                    userSelect: "none",
+                  }}
                   onMouseDown={startDrawing}
                   onMouseMove={draw}
                   onMouseUp={stopDrawing}
@@ -251,6 +256,7 @@ export function SignatureModal({
                   onTouchStart={startDrawing}
                   onTouchMove={draw}
                   onTouchEnd={stopDrawing}
+                  onTouchCancel={stopDrawing}
                 />
                 {/* Guide line */}
                 <div className="absolute bottom-8 left-6 right-6 border-b border-gray-200 pointer-events-none" />

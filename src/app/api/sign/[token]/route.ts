@@ -140,9 +140,27 @@ export async function POST(
 
     const envelope = recipient.envelope
 
-    // 6. Execute signing in a transaction
-    await prisma.$transaction(async (tx: Tx) => {
-      // Record e-sign consent
+    // 6. Execute signing in a transaction with optimistic locking on recipient.status.
+    // The CAS-style updateMany matches only if status is still PENDING/SENT/DELIVERED;
+    // if a concurrent request already flipped status to SIGNED, count === 0 and we
+    // abort cleanly with 409 instead of overwriting the prior signing.
+    const txResult = await prisma.$transaction(async (tx: Tx) => {
+      const cas = await tx.recipient.updateMany({
+        where: {
+          id: recipient.id,
+          status: { in: ['PENDING', 'SENT', 'DELIVERED'] },
+        },
+        data: {
+          status: 'SIGNED',
+          signedAt: new Date(),
+        },
+      })
+
+      if (cas.count === 0) {
+        return { won: false as const }
+      }
+
+      // Won the race — record consent, save fields, write audits.
       await logAudit(envelope.id, 'ESIGN_CONSENT_ACCEPTED', {
         actorName: recipient.name,
         actorEmail: recipient.email,
@@ -154,7 +172,6 @@ export async function POST(
         },
       })
 
-      // Save field values
       for (const fv of fieldValues) {
         await tx.field.update({
           where: { id: fv.fieldId },
@@ -173,15 +190,6 @@ export async function POST(
         })
       }
 
-      // Update recipient status
-      await tx.recipient.update({
-        where: { id: recipient.id },
-        data: {
-          status: 'SIGNED',
-          signedAt: new Date(),
-        },
-      })
-
       await logAudit(envelope.id, 'RECIPIENT_SIGNED', {
         actorName: recipient.name,
         actorEmail: recipient.email,
@@ -194,7 +202,16 @@ export async function POST(
           city: geo.city,
         },
       })
+
+      return { won: true as const }
     })
+
+    if (!txResult.won) {
+      return NextResponse.json(
+        { error: 'You have already signed this document' },
+        { status: 409 }
+      )
+    }
 
     emit(envelope.userId, 'envelope.signed', {
       envelopeId: envelope.id,
@@ -243,17 +260,22 @@ export async function POST(
     )
 
     if (allSigned) {
-      // All signers done -- seal the document, generate certificate, send emails
+      // All signers done — seal the document, generate certificate, send emails.
+      // If sealing fails, return a real error to the signer instead of falsely
+      // marking the envelope COMPLETED. The signer's submission is already saved;
+      // this just means we couldn't finalize, which is recoverable by retry.
       try {
         const { sealAndComplete } = await import('@/lib/seal-and-complete')
         await sealAndComplete(envelope.id)
       } catch (sealErr) {
         logger.error(sealErr, { op: 'sealAndComplete', envelopeId: envelope.id })
-        // Fallback: mark as completed even if sealing fails
-        await prisma.envelope.update({
-          where: { id: envelope.id },
-          data: { status: 'COMPLETED', completedAt: new Date() },
-        })
+        return NextResponse.json(
+          {
+            error:
+              "We saved your signature but couldn't finalize the document. Our team has been notified — please reach out to the sender if you don't see a completion email shortly.",
+          },
+          { status: 500 }
+        )
       }
 
       emit(envelope.userId, 'envelope.completed', {
@@ -266,12 +288,21 @@ export async function POST(
       })
     }
 
-    // Not all done -- flatten completed fields into PDF images for next signer
+    // Not all done — flatten completed fields into PDF for next signer.
+    // If flatten fails, do NOT email the next signer with an unflattened doc;
+    // surface a real error.
     try {
       const { flattenForNextSigner } = await import('@/lib/flatten-between-signers')
       await flattenForNextSigner(envelope.id)
     } catch (flattenErr) {
       logger.error(flattenErr, { op: 'flattenForNextSigner', envelopeId: envelope.id })
+      return NextResponse.json(
+        {
+          error:
+            "We saved your signature but couldn't prepare the document for the next signer. Our team has been notified.",
+        },
+        { status: 500 }
+      )
     }
 
     // Find and notify next routing order recipients

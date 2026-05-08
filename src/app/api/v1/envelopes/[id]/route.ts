@@ -146,37 +146,19 @@ async function handleSend(envelopeId: string, user: ActionUser) {
 
   const baseUrl = env.NEXT_PUBLIC_APP_URL
 
+  // Phase 1 (atomic): flip envelope to SENT, mark first-batch recipients SENT,
+  // log ENVELOPE_SENT. NO email I/O — Resend's failure must not roll back the
+  // envelope state.
   await prisma.$transaction(async (tx: Tx) => {
-    // Update envelope status
     await tx.envelope.update({
       where: { id: envelopeId },
       data: { status: 'SENT' },
     })
 
-    // Send emails to first batch and update their status
     for (const recipient of firstBatch) {
-      const signingUrl = `${baseUrl}/sign/${recipient.signingToken}`
-
-      await sendSigningRequest(
-        recipient.email,
-        recipient.name,
-        user.name ?? 'User',
-        envelope.subject,
-        signingUrl
-      )
-
       await tx.recipient.update({
         where: { id: recipient.id },
         data: { status: 'SENT' },
-      })
-
-      await logAudit(envelopeId, 'EMAIL_SENT', {
-        actorName: user.name ?? undefined,
-        actorEmail: user.email,
-        metadata: {
-          recipientEmail: recipient.email,
-          recipientName: recipient.name,
-        },
       })
     }
 
@@ -190,6 +172,44 @@ async function handleSend(envelopeId: string, user: ActionUser) {
       },
     })
   })
+
+  // Phase 2 (best-effort, post-commit): send emails. Failures are audit-logged
+  // as EMAIL_BOUNCED but don't fail the request — envelope is already SENT.
+  await Promise.allSettled(
+    firstBatch.map(async (recipient) => {
+      const signingUrl = `${baseUrl}/sign/${recipient.signingToken}`
+      try {
+        await sendSigningRequest(
+          recipient.email,
+          recipient.name,
+          user.name ?? 'User',
+          envelope.subject,
+          signingUrl
+        )
+        await logAudit(envelopeId, 'EMAIL_SENT', {
+          actorName: user.name ?? undefined,
+          actorEmail: user.email,
+          metadata: {
+            recipientEmail: recipient.email,
+            recipientName: recipient.name,
+          },
+        })
+      } catch (err) {
+        logger.error(err, {
+          op: 'sendSigningRequest',
+          envelopeId,
+          recipient: recipient.email,
+        })
+        await logAudit(envelopeId, 'EMAIL_BOUNCED', {
+          actorEmail: user.email,
+          metadata: {
+            recipientEmail: recipient.email,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        }).catch(() => {})
+      }
+    })
+  )
 
   emit(user.id, 'envelope.sent', {
     envelopeId,

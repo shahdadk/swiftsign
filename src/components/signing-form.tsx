@@ -348,22 +348,23 @@ export function SigningForm({
 
   // Render signing step
   if (step === "SIGNING" || step === "SUBMITTING") {
-    const currentDoc = documents[0]; // MVP: show first document
-    const docFields = fields.filter(
-      (f) => f.documentId === currentDoc?.id
-    );
+    const requiredRemaining = requiredCount - requiredCompleted;
 
     return (
       <div className="flex flex-col h-screen">
         <Header envelope={envelope} />
 
         {/* Progress bar */}
-        <div className="bg-white border-b border-gray-100 px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">
-              {completedCount} of {fields.length} fields completed
-            </span>
-          </div>
+        <div className="bg-white border-b border-gray-100 px-4 py-2.5 flex items-center justify-between gap-3">
+          <span className="text-sm text-gray-500">
+            {completedCount} of {fields.length} fields completed
+            {documents.length > 1 && (
+              <span className="text-gray-400">
+                {" "}
+                · {documents.length} documents
+              </span>
+            )}
+          </span>
           <div className="flex items-center gap-1.5">
             {fields.map((f) => (
               <div
@@ -376,25 +377,52 @@ export function SigningForm({
           </div>
         </div>
 
-        {/* PDF Viewer */}
+        {/* All documents stacked vertically */}
         <div className="flex-1 overflow-auto bg-gray-100">
-          <div className="p-4">
-            <PdfViewer
-              documentId={currentDoc.id}
-              token={token}
-              pageCount={currentDoc.pageCount || 1}
-              fields={docFields}
-              onFieldClick={handleFieldClick}
-              activeFieldId={activeFieldId}
-              onTextFieldChange={updateFieldValue}
-            />
+          <div className="p-4 max-w-4xl mx-auto space-y-8">
+            {documents.map((doc, i) => {
+              const docFields = fields.filter((f) => f.documentId === doc.id);
+              return (
+                <section key={doc.id}>
+                  <header className="flex items-baseline justify-between mb-2 px-1">
+                    <h2 className="text-sm font-semibold text-gray-900">
+                      {documents.length > 1 && (
+                        <span className="text-xs text-gray-400 font-medium mr-2">
+                          {i + 1} / {documents.length}
+                        </span>
+                      )}
+                      {doc.name}
+                    </h2>
+                    <span className="text-xs text-gray-400">
+                      {docFields.filter((f) => f.value).length}/{docFields.length}{" "}
+                      fields
+                    </span>
+                  </header>
+                  <PdfViewer
+                    documentId={doc.id}
+                    token={token}
+                    pageCount={doc.pageCount || 1}
+                    fields={docFields}
+                    onFieldClick={handleFieldClick}
+                    activeFieldId={activeFieldId}
+                    onTextFieldChange={updateFieldValue}
+                  />
+                </section>
+              );
+            })}
+            <p className="text-center text-xs text-gray-400 pt-2 pb-8">
+              Scroll up to review · all documents bundled into one signing
+              session
+            </p>
           </div>
         </div>
 
         {/* Bottom bar */}
         <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3">
           <p className="text-xs text-gray-400 hidden sm:block">
-            Signed with SwiftSign
+            {requiredRemaining > 0
+              ? `${requiredRemaining} required field${requiredRemaining === 1 ? "" : "s"} remaining`
+              : "All required fields complete"}
           </p>
           <button
             onClick={() => setShowConfirmDialog(true)}

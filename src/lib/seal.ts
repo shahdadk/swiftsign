@@ -73,52 +73,56 @@ export async function sealDocument(
           let drawHeight = absHeight
 
           if (imageAspect > fieldAspect) {
-            // Image is wider — constrain by width
+            // Image is wider relative to box — constrain by width, shrink height
             drawHeight = absWidth / imageAspect
           } else {
-            // Image is taller — constrain by height
+            // Image is taller relative to box — constrain by height, shrink width
             drawWidth = absHeight * imageAspect
           }
 
-          // pdf-lib Y origin is bottom-left; field.y is top-left percentage
-          const drawY = pageHeight - absY - absHeight
+          // Bottom-align the signature image within the field box so it sits
+          // on the underline. pdf-lib's y for drawImage is the BOTTOM of the
+          // image. Field y is top-left in our DB, so:
+          //   pdf-lib y of box bottom = pageHeight - absY - absHeight
+          // Drawing at that y puts the image bottom on the box bottom, which
+          // is where the underline sits.
+          const boxBottomY = pageHeight - absY - absHeight
 
           page.drawImage(image, {
             x: absX,
-            y: drawY + (absHeight - drawHeight), // vertically center/bottom-align
+            y: boxBottomY,
             width: drawWidth,
             height: drawHeight,
           })
         } catch (err) {
           console.error('Seal: failed to embed signature image:', err)
-          // Fallback: draw "[Signed]" text
-          page.drawText('[Signed]', {
-            x: absX,
-            y: pageHeight - absY - 15,
-            size: 12,
-            font: helveticaBold,
-            color: rgb(0, 0, 0),
-          })
+          // Re-throw so the caller can decide what to do — silently drawing
+          // "[Signed]" produces a misleading sealed PDF.
+          throw new Error(
+            `Failed to embed signature image for field at page ${pageIndex + 1}: ${err instanceof Error ? err.message : String(err)}`
+          )
         }
       } else {
-        // Typed signature — draw as styled text
-        const fontSize = Math.min(16, absHeight * 0.6)
+        // Typed signature — draw as styled text, baseline near the box bottom
+        const fontSize = Math.min(16, absHeight * 0.7)
+        const baselineY = pageHeight - absY - absHeight + fontSize * 0.2
         page.drawText(field.value, {
           x: absX + 4,
-          y: pageHeight - absY - fontSize - 4,
+          y: baselineY,
           size: fontSize,
           font: helveticaBold,
           color: rgb(0, 0, 0),
         })
       }
     } else if (['NAME', 'DATE', 'TEXT'].includes(field.type)) {
-      // Text fields
-      const fontSize = Math.min(12, absHeight * 0.5)
+      // Text fields — baseline anchored at the box bottom (sits on the line).
+      const fontSize = Math.min(12, absHeight * 0.7)
       const font = field.type === 'NAME' ? helveticaBold : helvetica
+      const baselineY = pageHeight - absY - absHeight + fontSize * 0.2
 
       page.drawText(field.value, {
         x: absX + 2,
-        y: pageHeight - absY - fontSize - 4,
+        y: baselineY,
         size: fontSize,
         font,
         color: rgb(0, 0, 0),
