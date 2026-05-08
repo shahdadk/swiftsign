@@ -118,16 +118,19 @@ export function PdfViewer({
                     field.type === "SIGNATURE" || field.type === "INITIALS";
                   const isInlineText = field.type === "TEXT";
 
-                  // Inline editable text input — renders on top of the field
+                  // Inline editable text input — renders on top of the field.
+                  // Solid white bg so the underlying placeholder text in the
+                  // PDF (e.g. "[CLIENT LEGAL NAME]") gets masked while signer
+                  // is filling it in. Border tint indicates state.
                   if (isInlineText) {
                     return (
                       <div
                         key={field.id}
-                        className={`absolute z-10 rounded-sm transition-all ${
+                        className={`absolute z-10 rounded-sm transition-all bg-white ${
                           isFilled
-                            ? "border border-green-400/60 bg-green-50/30"
-                            : "border border-amber-400/80 bg-amber-50/60"
-                        } ${isActive ? "ring-1 ring-blue-500" : ""}`}
+                            ? "border border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.15)]"
+                            : "border border-amber-400 shadow-[0_0_0_2px_rgba(245,158,11,0.15)]"
+                        } ${isActive ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
                         style={{
                           left: `${field.x}%`,
                           top: `${field.y}%`,
@@ -139,7 +142,7 @@ export function PdfViewer({
                         <input
                           type="text"
                           value={field.value ?? ""}
-                          placeholder={isActive ? "" : FIELD_LABELS.TEXT}
+                          placeholder={isActive ? "" : "Type here"}
                           onFocus={() => onFieldClick(field.id)}
                           onChange={(e) =>
                             onTextFieldChange(field.id, e.target.value)
