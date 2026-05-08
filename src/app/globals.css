@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Map design tokens into Tailwind v4 theme so utilities like bg-primary,
+   text-primary, hover:bg-primary-dark resolve to the SwiftSign palette
+   used by the dashboard and signer-flow components. */
+@theme {
+  --color-primary: #2b5cff;
+  --color-primary-dark: #1c48e6;
+}
+
 /* SwiftSign — design tokens
    Light theme, electric-blue accent. Mono-forward dev aesthetic. */
 
