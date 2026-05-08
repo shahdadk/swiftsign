@@ -64,6 +64,11 @@ async function main() {
 
   // Same coords as scripts/send-drillfit.mjs but with PAGE - 1 for sealDocument
   const msaFields: SealField[] = [
+    // Page 1 — inline placeholders in section 1 paragraph
+    { type: 'TEXT', page: 0, x: 61.5, y: 21.6, width: 15.5, height: 2.4, value: 'May 8, 2026' },
+    { type: 'TEXT', page: 0, x: 29.5, y: 23.4, width: 19.5, height: 2.4, value: 'DrillFit Health Solutions Inc.' },
+    { type: 'TEXT', page: 0, x: 56.7, y: 23.4, width: 15.6, height: 2.4, value: '1234 Maple Ave, Suite 500, Toronto, ON M5V 3K2' },
+
     // Contractor block (Shahdad) on page 8 (index 7)
     // "By:" label at y=25.3%, "Name:" label at y=27.5% → sig must fit between
     {

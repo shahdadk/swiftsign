@@ -115,10 +115,38 @@ export async function sealDocument(
         })
       }
     } else if (['NAME', 'DATE', 'TEXT'].includes(field.type)) {
-      // Text fields — baseline anchored at the box bottom (sits on the line).
-      const fontSize = Math.min(12, absHeight * 0.7)
+      // Text fields. First draw a white rect to redact any underlying text
+      // (e.g. "[CLIENT LEGAL NAME]" placeholder), then draw the value on top.
+      // This means inline placeholders in paragraphs get cleanly replaced
+      // instead of having both the original bracket text AND the typed value
+      // visible in the sealed PDF.
+      const boxBottomY = pageHeight - absY - absHeight
+      page.drawRectangle({
+        x: absX,
+        y: boxBottomY,
+        width: absWidth,
+        height: absHeight,
+        color: rgb(1, 1, 1),
+        opacity: 1,
+      })
+
       const font = field.type === 'NAME' ? helveticaBold : helvetica
-      const baselineY = pageHeight - absY - absHeight + fontSize * 0.2
+      const innerWidth = absWidth - 4 // 2pt padding each side
+
+      // Start at the natural size for the box, then shrink until the text
+      // actually fits within the available width. This stops typed values
+      // from overflowing past the field box and bleeding into surrounding
+      // paragraph text (e.g. long company addresses on inline placeholders).
+      let fontSize = Math.min(12, absHeight * 0.7)
+      const minFontSize = 5
+      while (
+        fontSize > minFontSize &&
+        font.widthOfTextAtSize(field.value, fontSize) > innerWidth
+      ) {
+        fontSize -= 0.5
+      }
+
+      const baselineY = boxBottomY + fontSize * 0.2
 
       page.drawText(field.value, {
         x: absX + 2,
