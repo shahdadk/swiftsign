@@ -18,6 +18,8 @@ const eslintConfig = defineConfig([
     "mcp/**",
     // Standalone seed script
     "prisma/seed.ts",
+    // pdfjs worker file (copied from node_modules at build time)
+    "public/**/*",
   ]),
 ]);
 

@@ -70,7 +70,7 @@ const fields = [
 const payload = {
   subject: 'DrillFit × Appfi — MSA + SOW',
   message:
-    "Hey Aidan — please review and sign the MSA and SOW. Both are wrapped into one signing session. I'll have countersigned by the time you sign, so all you need to do is fill in your details on the client side. Thanks!",
+    "MSA and SOW for the DrillFit engagement. Both are bundled into one signing session — please review, sign the highlighted fields, and submit. Thanks!",
   documents: [
     { name: 'DrillFit_MSA_2026-05-06.pdf', base64: msaB64 },
     { name: 'DrillFit_SOW_2026-05-06.pdf', base64: sowB64 },
