@@ -55,6 +55,7 @@ export function PdfViewer({
   fields,
   onFieldClick,
   activeFieldId,
+  onTextFieldChange,
 }: PdfViewerProps) {
   const fileUrl = useMemo(
     () => `/api/documents/${documentId}/file?token=${encodeURIComponent(token)}`,
@@ -115,6 +116,39 @@ export function PdfViewer({
                   const isActive = field.id === activeFieldId;
                   const isImageField =
                     field.type === "SIGNATURE" || field.type === "INITIALS";
+                  const isInlineText = field.type === "TEXT";
+
+                  // Inline editable text input — renders on top of the field
+                  if (isInlineText) {
+                    return (
+                      <div
+                        key={field.id}
+                        className={`absolute z-10 rounded-sm transition-all ${
+                          isFilled
+                            ? "border border-green-400/60 bg-green-50/30"
+                            : "border border-amber-400/80 bg-amber-50/60"
+                        } ${isActive ? "ring-1 ring-blue-500" : ""}`}
+                        style={{
+                          left: `${field.x}%`,
+                          top: `${field.y}%`,
+                          width: `${field.width}%`,
+                          height: `${field.height}%`,
+                          minHeight: 22,
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={field.value ?? ""}
+                          placeholder={isActive ? "" : FIELD_LABELS.TEXT}
+                          onFocus={() => onFieldClick(field.id)}
+                          onChange={(e) =>
+                            onTextFieldChange(field.id, e.target.value)
+                          }
+                          className="w-full h-full bg-transparent px-1.5 text-xs sm:text-sm text-gray-900 font-medium placeholder:text-amber-700/70 placeholder:font-medium focus:outline-none"
+                        />
+                      </div>
+                    );
+                  }
 
                   return (
                     <div
@@ -134,7 +168,7 @@ export function PdfViewer({
                       }}
                     >
                       {!isFilled && (
-                        <span className="flex items-center gap-1 text-amber-600 text-[9px] sm:text-xs font-medium select-none px-1.5 truncate">
+                        <span className="flex items-center gap-1 text-amber-700 text-[10px] sm:text-xs font-medium select-none px-1.5 truncate">
                           {field.type === "SIGNATURE" && (
                             <svg
                               className="w-4 h-4 flex-shrink-0"
@@ -167,7 +201,7 @@ export function PdfViewer({
                       )}
 
                       {isFilled && !isImageField && (
-                        <span className="text-[9px] sm:text-xs text-gray-700 font-medium px-1.5 truncate w-full">
+                        <span className="text-xs sm:text-sm text-gray-900 font-medium px-1.5 truncate w-full">
                           {field.type === "CHECKBOX" ? "✓" : field.value}
                         </span>
                       )}
