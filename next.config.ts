@@ -17,10 +17,11 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+      "worker-src 'self' blob:",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://*.r2.cloudflarestorage.com",
-      "connect-src 'self' https://api.stripe.com https://*.sentry.io https://*.upstash.io",
+      "connect-src 'self' blob: https://api.stripe.com https://*.sentry.io https://*.upstash.io",
       "frame-src https://js.stripe.com https://checkout.stripe.com https://billing.stripe.com",
       "form-action 'self' https://checkout.stripe.com",
       "base-uri 'self'",
@@ -30,6 +31,15 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  // pdfjs-dist + @napi-rs/canvas use native binaries and a worker file inside
+  // node_modules. Bundling them with Turbopack breaks worker resolution and
+  // strips the native .node binary at runtime — keep them external.
+  serverExternalPackages: [
+    'pdfjs-dist',
+    '@napi-rs/canvas',
+    'canvas',
+    'pdf-lib',
+  ],
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',

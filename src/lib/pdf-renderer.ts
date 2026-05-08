@@ -1,4 +1,4 @@
-import { createCanvas } from 'canvas';
+import { createCanvas, type Canvas } from 'canvas';
 
 // pdfjs-dist v5 legacy build for Node.js (no DOM dependencies)
 // Loaded lazily via dynamic import since it's ESM-only
@@ -42,17 +42,17 @@ export interface AnchorResult {
 
 class NodeCanvasFactory {
   create(width: number, height: number) {
-    const canvas = createCanvas(width, height);
+    const canvas: Canvas = createCanvas(width, height);
     const context = canvas.getContext('2d');
     return { canvas, context };
   }
 
-  reset(canvasAndContext: { canvas: ReturnType<typeof createCanvas> }, width: number, height: number) {
+  reset(canvasAndContext: { canvas: Canvas }, width: number, height: number) {
     canvasAndContext.canvas.width = width;
     canvasAndContext.canvas.height = height;
   }
 
-  destroy(canvasAndContext: { canvas: ReturnType<typeof createCanvas> }) {
+  destroy(canvasAndContext: { canvas: Canvas }) {
     canvasAndContext.canvas.width = 0;
     canvasAndContext.canvas.height = 0;
   }
