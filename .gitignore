@@ -52,3 +52,4 @@ mcp/.npmrc
 next-env.d.ts
 
 /src/generated/prisma
+scripts/get-tokens.ts
