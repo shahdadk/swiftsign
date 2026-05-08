@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+    open-pull-requests-limit: 5
+    # React 19 / Next 16 / Prisma 7 preview combo is fragile —
+    # only auto-PR security updates; humans handle minor/major bumps.
+    allow:
+      - dependency-type: 'production'
+        update-type: 'security'
+      - dependency-type: 'development'
+        update-type: 'security'
+
+  - package-ecosystem: 'npm'
+    directory: '/mcp'
+    schedule:
+      interval: 'monthly'
+    open-pull-requests-limit: 3
+    allow:
+      - dependency-type: 'production'
+        update-type: 'security'
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'monthly'

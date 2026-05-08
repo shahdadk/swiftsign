@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SwiftSign
 
-## Getting Started
+AI-native e-signatures. Send, track, and seal contracts from your terminal — Claude Code, Cursor, Zed, or any MCP-aware agent. ESIGN / UETA / PIPEDA compliant sealed PDFs with audit trail.
 
-First, run the development server:
+## Stack
+
+- Next.js 16.2 (App Router, Turbopack, React 19)
+- Prisma 7 (preview) + Neon PostgreSQL via `@prisma/adapter-pg`
+- Cloudflare R2 (S3-compatible) for PDFs + page images
+- Resend for transactional email
+- Stripe for billing (Free / Pro $15 / Team $79, monthly)
+- Upstash Redis for rate limiting
+- Sentry for error tracking
+
+## Local development
 
 ```bash
+# Install (legacy-peer-deps is pinned in .npmrc, required for React 19 / Next 16)
+npm install
+
+# Generate the Prisma client (writes to src/generated/prisma/, gitignored)
+npx prisma generate
+
+# Apply schema migrations to your dev DB
+npx prisma migrate deploy
+
+# Run the dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy `.env.local.example` to `.env.local` and fill in the values.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev` — start dev server on port 3000
+- `npm run build` — production build (Turbopack)
+- `npm run start` — run the built server
+- `npm run lint` — ESLint
+- `npx prisma generate` — regenerate the Prisma client
+- `npx prisma migrate dev --name <slug>` — create a new migration
+- `npx tsx prisma/seed.ts` — seed a local user (manual)
 
-## Learn More
+## Deploying to Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. **Provision services**:
+   - Neon PostgreSQL database; copy the pooled connection string to `DATABASE_URL`.
+   - Cloudflare R2 bucket; create an API token with read/write; copy account ID, access key ID, secret, bucket name.
+   - Resend domain (verify DNS for the `EMAIL_FROM` domain) and an API key.
+   - Stripe products: SwiftSign Pro ($15/mo recurring), SwiftSign Team ($79/mo recurring); copy price IDs. Enable Stripe Tax if collecting GST/HST/VAT. Set the customer portal return URL to `https://swiftsign.ca/dashboard/billing` and enable cancel + payment-method update.
+   - Stripe webhook endpoint: `https://swiftsign.ca/api/stripe/webhook`, listening for `checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.payment_failed`. Copy the signing secret.
+   - Upstash Redis instance for rate limiting; copy REST URL and token.
+   - Sentry project (Next.js); copy the DSN.
+   - Generate a `CRON_SECRET` (16+ random chars). Vercel cron will pass this as `Authorization: Bearer <CRON_SECRET>`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Set environment variables** on the Vercel project (Production + Preview). See `.env.local.example` for the full list.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. **Deploy**: connect the repo, push to `main`. Vercel runs `npx prisma generate` and `next build` from `package.json`.
 
-## Deploy on Vercel
+   Run schema migrations once via `npx prisma migrate deploy` — locally, or as part of a build hook. Subsequent deploys re-apply automatically if you wire it into the build command.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4. **Verify**: visit `/api/healthcheck`. Returns `{ status: "ok" }` with DB and R2 checks green.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Architecture
+
+- `/api/v1/envelopes` — public REST API; bearer-token auth via `Authorization: Bearer <apiKey>`. Quota enforced (5/mo on Free, unlimited on Pro/Team).
+- `/sign/[token]` + `/api/sign/[token]` — recipient signing flow. No account; `signingToken` is the only credential.
+- `/dashboard/*` — sender UI. Cookie session via `swiftsign_session`. Pages: envelopes list, envelope detail, billing, settings (API key + sessions), webhooks.
+- `/api/stripe/webhook` — Stripe → DB sync (subscription + plan).
+- `/api/cron/webhook-retry` — runs every 5 minutes via `vercel.json` to retry failed outbound webhook deliveries.
+
+## MCP server
+
+Independent npm package at `mcp/`. Build + publish:
+
+```bash
+cd mcp
+npm install
+npm run build
+npm publish
+```
+
+Users install with:
+
+```bash
+claude mcp add swiftsign -- npx -y swiftsign-mcp
+```
+
+Configure with `SWIFTSIGN_API_KEY` (and optionally `SWIFTSIGN_API_URL` for self-hosted instances).

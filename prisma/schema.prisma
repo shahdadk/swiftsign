@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id               String            @id @default(cuid())
+  email            String            @unique
+  name             String?
+  company          String?
+  apiKey           String?           @unique @default(cuid())
+  emailVerified    DateTime?
+  image            String?
+  createdAt        DateTime          @default(now())
+  stripeCustomerId String?           @unique
+  plan             Plan              @default(FREE)
+  envelopes        Envelope[]
+  accounts         Account[]
+  sessions         Session[]
+  subscription     Subscription?
+  webhookEndpoints WebhookEndpoint[]
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSubId        String             @unique
+  stripePriceId      String
+  status             SubscriptionStatus @default(ACTIVE)
+  cancelAtPeriodEnd  Boolean            @default(false)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([status])
+}
+
+enum Plan {
+  FREE
+  PRO
+  TEAM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  UNPAID
+}
+
+model WebhookEndpoint {
+  id         String            @id @default(cuid())
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url        String
+  secret     String
+  events     String[]
+  isActive   Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  deliveries WebhookDelivery[]
+
+  @@index([userId, isActive])
+}
+
+model WebhookDelivery {
+  id            String          @id @default(cuid())
+  endpointId    String
+  endpoint      WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  eventType     String
+  eventId       String          @unique
+  payload       Json
+  statusCode    Int?
+  attempts      Int             @default(0)
+  nextAttemptAt DateTime?
+  lastError     String?
+  deliveredAt   DateTime?
+  createdAt     DateTime        @default(now())
+
+  @@index([endpointId, createdAt])
+  @@index([nextAttemptAt])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Envelope {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+  subject     String
+  message     String?
+  status      EnvelopeStatus @default(DRAFT)
+  documents   Document[]
+  recipients  Recipient[]
+  auditLogs   AuditLog[]
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model Document {
+  id           String   @id @default(cuid())
+  envelopeId   String
+  envelope     Envelope @relation(fields: [envelopeId], references: [id])
+  name         String
+  originalKey  String
+  signedKey    String?
+  pageCount    Int      @default(0)
+  fields       Field[]
+  documentHash String?
+  imageKeys    Json?
+  order        Int      @default(0)
+}
+
+model Recipient {
+  id           String          @id @default(cuid())
+  envelopeId   String
+  envelope     Envelope        @relation(fields: [envelopeId], references: [id])
+  name         String
+  email        String
+  role         RecipientRole   @default(SIGNER)
+  routingOrder Int             @default(1)
+  status       RecipientStatus @default(PENDING)
+  signingToken String          @unique @default(cuid())
+  signedAt     DateTime?
+  viewedAt     DateTime?
+  fields       Field[]
+}
+
+model Field {
+  id          String    @id @default(cuid())
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id])
+  recipientId String
+  recipient   Recipient @relation(fields: [recipientId], references: [id])
+  type        FieldType
+  page        Int
+  x           Float
+  y           Float
+  width       Float     @default(200)
+  height      Float     @default(40)
+  value       String?
+  required    Boolean   @default(true)
+}
+
+model AuditLog {
+  id         String     @id @default(cuid())
+  envelopeId String
+  envelope   Envelope   @relation(fields: [envelopeId], references: [id])
+  event      AuditEvent
+  actorName  String?
+  actorEmail String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime   @default(now())
+}
+
+enum EnvelopeStatus {
+  DRAFT
+  SENT
+  COMPLETED
+  DECLINED
+  VOIDED
+}
+
+enum RecipientRole {
+  SIGNER
+  CC
+}
+
+enum RecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  SIGNED
+  DECLINED
+}
+
+enum FieldType {
+  SIGNATURE
+  NAME
+  DATE
+  TEXT
+  INITIALS
+  CHECKBOX
+}
+
+model SignatureAdoption {
+  id        String   @id @default(cuid())
+  email     String
+  name      String
+  signature String?  // base64 data URL of signature image
+  initials  String?  // base64 data URL of initials image
+  fullName  String?  // persisted full name for auto-fill
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email, name], name: "email_name")
+}
+
+enum AuditEvent {
+  ENVELOPE_CREATED
+  ENVELOPE_SENT
+  DOCUMENT_VIEWED
+  ESIGN_CONSENT_ACCEPTED
+  FIELD_COMPLETED
+  RECIPIENT_SIGNED
+  ENVELOPE_COMPLETED
+  ENVELOPE_DECLINED
+  ENVELOPE_VOIDED
+  EMAIL_SENT
+  EMAIL_BOUNCED
+  API_KEY_ROTATED
+  WEBHOOK_ENDPOINT_CREATED
+  WEBHOOK_ENDPOINT_UPDATED
+  WEBHOOK_ENDPOINT_DELETED
+  SUBSCRIPTION_UPDATED
+  QUOTA_EXCEEDED
+}

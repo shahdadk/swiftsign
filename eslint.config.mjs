@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated Prisma client (gitignored)
+    "src/generated/**",
+    // MCP package has its own tsconfig + build pipeline
+    "mcp/**",
+    // Standalone seed script
+    "prisma/seed.ts",
   ]),
 ]);
 
