@@ -22,6 +22,11 @@ console.log(`SOW: ${(sowB64.length / 1024).toFixed(0)}KB base64`)
 // overlap "Name:" pre-printed label below.
 const fields = [
   // ============ MSA ============
+  // Page 1 — inline placeholders in section 1 paragraph (Maarij fills)
+  { recipientIndex: 1, document: 0, type: 'TEXT', page: 1, x: 61.5, y: 21.6, width: 15.5, height: 2.4 },
+  { recipientIndex: 1, document: 0, type: 'TEXT', page: 1, x: 29.5, y: 23.4, width: 19.5, height: 2.4 },
+  { recipientIndex: 1, document: 0, type: 'TEXT', page: 1, x: 56.7, y: 23.4, width: 15.6, height: 2.4 },
+
   // Contractor block on page 8 (Shahdad)
   { recipientIndex: 0, document: 0, type: 'SIGNATURE', page: 8, x: 17, y: 23.5, width: 35, height: 3 },
   { recipientIndex: 0, document: 0, type: 'TEXT',      page: 8, x: 17, y: 28.5, width: 40, height: 3 },
