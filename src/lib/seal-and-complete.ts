@@ -166,38 +166,43 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
     },
   })
 
-  // 7. Send completion emails to all recipients + sender (parallel, best-effort).
-  // Each email lists EVERY document in the envelope plus the certificate so
-  // the recipient can download the full signed package, not just doc 0.
-  const baseUrl = env.NEXT_PUBLIC_APP_URL
-
-  type EmailJob = {
-    to: string
-    name: string
-    downloads: { name: string; url: string }[]
-    certificateUrl: string
-    kind: 'recipient' | 'sender'
+  // 7. Send completion emails to all recipients + sender with the sealed
+  // PDFs + certificate attached. Recipients get the full signed package
+  // in their inbox without clicking through links.
+  const sealedAttachments: { filename: string; content: Buffer }[] = []
+  for (const doc of envelope.documents) {
+    if (!doc.signedKey) continue
+    try {
+      const buf = await downloadPdf(doc.signedKey)
+      sealedAttachments.push({ filename: doc.name, content: buf })
+    } catch (err) {
+      logger.error(err, {
+        op: 'sendCompleted-loadAttachment',
+        docName: doc.name,
+      })
+    }
   }
 
-  const emailJobs: EmailJob[] = [
+  let certAttachment: { filename: string; content: Buffer } | null = null
+  try {
+    const certBuf = await downloadPdf(certKey)
+    certAttachment = {
+      filename: `Certificate-of-Completion.pdf`,
+      content: certBuf,
+    }
+  } catch (err) {
+    logger.error(err, { op: 'sendCompleted-loadCertificate' })
+  }
+
+  const emailJobs = [
     ...envelope.recipients.map((recipient) => ({
       to: recipient.email,
       name: recipient.name,
-      downloads: envelope.documents.map((doc, i) => ({
-        name: doc.name,
-        url: `${baseUrl}/api/envelopes/${envelopeId}/download?token=${recipient.signingToken}&doc=${i}`,
-      })),
-      certificateUrl: `${baseUrl}/api/envelopes/${envelopeId}/download?token=${recipient.signingToken}&certificate=true`,
       kind: 'recipient' as const,
     })),
     {
       to: envelope.user.email,
       name: envelope.user.name ?? 'User',
-      downloads: envelope.documents.map((doc, i) => ({
-        name: doc.name,
-        url: `${baseUrl}/api/envelopes/${envelopeId}/download?doc=${i}`,
-      })),
-      certificateUrl: `${baseUrl}/api/envelopes/${envelopeId}/download?certificate=true`,
       kind: 'sender' as const,
     },
   ]
@@ -209,8 +214,8 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
           job.to,
           job.name,
           envelope.subject,
-          job.downloads,
-          job.certificateUrl
+          sealedAttachments,
+          certAttachment
         )
         await logAudit(envelopeId, 'EMAIL_SENT', {
           metadata: {

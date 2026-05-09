@@ -45,15 +45,22 @@ export async function sendCompleted(
   to: string,
   signerName: string,
   envelopeSubject: string,
-  downloads: { name: string; url: string }[],
-  certificateUrl: string
+  attachments: { filename: string; content: Buffer }[],
+  certificateAttachment: { filename: string; content: Buffer } | null
 ) {
-  const docList = downloads
+  // Best-effort: attach the sealed PDFs + certificate so the recipient has
+  // everything in their inbox even if our backup links ever expire.
+  // Resend accepts Buffer / string content; we pass Buffer.
+  const allAttachments = [...attachments]
+  if (certificateAttachment) allAttachments.push(certificateAttachment)
+
+  const docList = attachments
     .map(
       (d) => `
         <tr>
-          <td style="padding: 8px 0;">
-            <a href="${d.url}" style="color: #2b5cff; text-decoration: none; font-weight: 500;">📄 ${d.name}</a>
+          <td style="padding: 6px 0;">
+            <span style="color: #1f2937; font-weight: 500;">📄 ${d.filename}</span>
+            <span style="color: #94a3b8; font-size: 12px;"> &middot; attached</span>
           </td>
         </tr>`
     )
@@ -62,24 +69,31 @@ export async function sendCompleted(
   await getResend().emails.send({
     from: FROM,
     to,
-    subject: `"${envelopeSubject}" has been completed`,
+    subject: `"${envelopeSubject}" — signed and sealed`,
+    attachments: allAttachments.map((a) => ({
+      filename: a.filename,
+      content: a.content,
+    })),
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Document Completed</h2>
+        <h2>Signed and Sealed</h2>
         <p>Hi ${signerName},</p>
-        <p>All parties have signed <strong>"${envelopeSubject}"</strong>. Your signed copies are ready to download.</p>
+        <p>All parties have signed <strong>"${envelopeSubject}"</strong>. Your signed copies are attached to this email.</p>
 
-        <table style="margin: 24px 0; width: 100%; border-collapse: collapse;">
+        <table style="margin: 20px 0; width: 100%; border-collapse: collapse;">
           ${docList}
-          <tr>
-            <td style="padding: 8px 0; border-top: 1px solid #e5e7eb;">
-              <a href="${certificateUrl}" style="color: #64748b; text-decoration: none; font-size: 14px;">📜 Certificate of Completion</a>
-            </td>
-          </tr>
+          ${
+            certificateAttachment
+              ? `<tr><td style="padding: 6px 0; border-top: 1px solid #e5e7eb;">
+                <span style="color: #475569; font-weight: 500;">📜 ${certificateAttachment.filename}</span>
+                <span style="color: #94a3b8; font-size: 12px;"> &middot; attached</span>
+              </td></tr>`
+              : ''
+          }
         </table>
 
         <p style="color: #64748b; font-size: 14px;">
-          Each link opens the sealed PDF. Save copies for your records — links remain accessible while your account is active.
+          Each PDF carries a SHA-256 integrity hash. The Certificate of Completion records every signer's name, email, IP, location, and timestamps for audit purposes. Save these for your records.
         </p>
       </div>
     `,
