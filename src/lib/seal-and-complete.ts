@@ -167,20 +167,37 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
   })
 
   // 7. Send completion emails to all recipients + sender (parallel, best-effort).
+  // Each email lists EVERY document in the envelope plus the certificate so
+  // the recipient can download the full signed package, not just doc 0.
   const baseUrl = env.NEXT_PUBLIC_APP_URL
-  const senderDownloadUrl = `${baseUrl}/api/envelopes/${envelopeId}/download`
 
-  const emailJobs = [
+  type EmailJob = {
+    to: string
+    name: string
+    downloads: { name: string; url: string }[]
+    certificateUrl: string
+    kind: 'recipient' | 'sender'
+  }
+
+  const emailJobs: EmailJob[] = [
     ...envelope.recipients.map((recipient) => ({
       to: recipient.email,
       name: recipient.name,
-      url: `${baseUrl}/api/envelopes/${envelopeId}/download?token=${recipient.signingToken}`,
+      downloads: envelope.documents.map((doc, i) => ({
+        name: doc.name,
+        url: `${baseUrl}/api/envelopes/${envelopeId}/download?token=${recipient.signingToken}&doc=${i}`,
+      })),
+      certificateUrl: `${baseUrl}/api/envelopes/${envelopeId}/download?token=${recipient.signingToken}&certificate=true`,
       kind: 'recipient' as const,
     })),
     {
       to: envelope.user.email,
       name: envelope.user.name ?? 'User',
-      url: senderDownloadUrl,
+      downloads: envelope.documents.map((doc, i) => ({
+        name: doc.name,
+        url: `${baseUrl}/api/envelopes/${envelopeId}/download?doc=${i}`,
+      })),
+      certificateUrl: `${baseUrl}/api/envelopes/${envelopeId}/download?certificate=true`,
       kind: 'sender' as const,
     },
   ]
@@ -188,7 +205,13 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
   await Promise.allSettled(
     emailJobs.map(async (job) => {
       try {
-        await sendCompleted(job.to, job.name, envelope.subject, job.url)
+        await sendCompleted(
+          job.to,
+          job.name,
+          envelope.subject,
+          job.downloads,
+          job.certificateUrl
+        )
         await logAudit(envelopeId, 'EMAIL_SENT', {
           metadata: {
             type: 'completion',

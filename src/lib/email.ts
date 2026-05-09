@@ -44,26 +44,42 @@ export async function sendSigningRequest(
 export async function sendCompleted(
   to: string,
   signerName: string,
-  documentName: string,
-  downloadUrl: string
+  envelopeSubject: string,
+  downloads: { name: string; url: string }[],
+  certificateUrl: string
 ) {
+  const docList = downloads
+    .map(
+      (d) => `
+        <tr>
+          <td style="padding: 8px 0;">
+            <a href="${d.url}" style="color: #2b5cff; text-decoration: none; font-weight: 500;">📄 ${d.name}</a>
+          </td>
+        </tr>`
+    )
+    .join('')
+
   await getResend().emails.send({
     from: FROM,
     to,
-    subject: `"${documentName}" has been completed`,
+    subject: `"${envelopeSubject}" has been completed`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Document Completed</h2>
         <p>Hi ${signerName},</p>
-        <p>All parties have signed <strong>"${documentName}"</strong>.</p>
-        <p style="margin: 32px 0;">
-          <a href="${downloadUrl}"
-             style="background: #0f172a; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-            Download Signed Document
-          </a>
-        </p>
+        <p>All parties have signed <strong>"${envelopeSubject}"</strong>. Your signed copies are ready to download.</p>
+
+        <table style="margin: 24px 0; width: 100%; border-collapse: collapse;">
+          ${docList}
+          <tr>
+            <td style="padding: 8px 0; border-top: 1px solid #e5e7eb;">
+              <a href="${certificateUrl}" style="color: #64748b; text-decoration: none; font-size: 14px;">📜 Certificate of Completion</a>
+            </td>
+          </tr>
+        </table>
+
         <p style="color: #64748b; font-size: 14px;">
-          This link will expire in 7 days. Please download your copy for your records.
+          Each link opens the sealed PDF. Save copies for your records — links remain accessible while your account is active.
         </p>
       </div>
     `,
