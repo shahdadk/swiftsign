@@ -8,8 +8,10 @@ import fs from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { prisma } from '../src/lib/db'
+import { downloadPdf } from '../src/lib/storage'
 
-const ENVELOPE_ID = 'aa7c1e06-6f67-4b26-92b9-3ab4143fd754'
+const ENVELOPE_ID = process.argv[2] ?? 'aa7c1e06-6f67-4b26-92b9-3ab4143fd754'
+const RECIPIENT_NAME = process.argv[3] // optional: filter to one recipient
 
 async function main() {
   const env = await prisma.envelope.findUniqueOrThrow({
@@ -19,40 +21,34 @@ async function main() {
         orderBy: { order: 'asc' },
       },
       recipients: {
-        where: { name: 'Maarij Baig' },
+        where: RECIPIENT_NAME ? { name: RECIPIENT_NAME } : undefined,
         include: {
           fields: { include: { document: { select: { id: true, name: true } } } },
         },
       },
     },
   })
-  const maarij = env.recipients[0]
-  if (!maarij) throw new Error("Couldn't find Maarij")
+  const recipient = env.recipients[0]
+  if (!recipient) throw new Error(`Couldn't find recipient${RECIPIENT_NAME ? ` "${RECIPIENT_NAME}"` : ''}`)
 
-  const outDir = '/tmp/preview'
+  console.log(`\nPreviewing what ${recipient.name} <${recipient.email}> sees`)
+  console.log(`Envelope: ${env.subject}`)
+
+  const outDir = `/tmp/preview/${ENVELOPE_ID}`
   await fs.mkdir(outDir, { recursive: true })
-
-  // We don't need to download from R2 — we still have the original PDFs locally.
-  const sourcePaths = {
-    'DrillFit_MSA_2026-05-06.pdf':
-      '/Users/shahdad/Downloads/maarijbaig/DrillFit_MSA_2026-05-06.pdf',
-    'DrillFit_SOW_2026-05-06.pdf':
-      '/Users/shahdad/Downloads/maarijbaig/DrillFit_SOW_2026-05-06.pdf',
-  } as Record<string, string>
 
   const opened: string[] = []
 
   for (const doc of env.documents) {
-    const path = sourcePaths[doc.name]
-    if (!path) continue
-    const pdfBytes = await fs.readFile(path)
+    // Pull the original PDF from R2 (works for any envelope)
+    const pdfBytes = await downloadPdf(doc.originalKey)
     const pdfDoc = await PDFDocument.load(pdfBytes)
     const pages = pdfDoc.getPages()
     const helv = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
 
-    const docFields = maarij.fields.filter((f) => f.documentId === doc.id)
+    const docFields = recipient.fields.filter((f) => f.documentId === doc.id)
     console.log(
-      `\n${doc.name}: ${docFields.length} field${docFields.length === 1 ? '' : 's'} for Maarij`
+      `\n${doc.name}: ${docFields.length} field${docFields.length === 1 ? '' : 's'} for ${recipient.name}`
     )
 
     for (const field of docFields) {
@@ -109,7 +105,8 @@ async function main() {
 }
 
 // Friendly label for what the recipient is meant to fill in based on
-// type + position context (we know the DrillFit layout).
+// type + position context (heuristics for known templates; falls back to
+// the generic field type otherwise).
 function humanLabel(type: string, docName: string, page: number, x: number, y: number): string {
   if (type === 'SIGNATURE') return 'Sign here'
   if (type === 'NAME') return 'Your full name'
@@ -129,6 +126,11 @@ function humanLabel(type: string, docName: string, page: number, x: number, y: n
   }
   if (docName.startsWith('DrillFit_SOW') && page === 7) {
     if (y > 50 && y < 53) return 'Title'
+  }
+  // ItemIQ subcontractor agreement — page 10 prime contractor block
+  if (docName.includes('ItemIQ') && page === 10) {
+    if (y > 53 && y < 56) return 'Title'
+    if (y > 55 && y < 58) return 'Email (Notices)'
   }
   return 'Text field'
 }
