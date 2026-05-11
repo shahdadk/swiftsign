@@ -12,7 +12,20 @@ AI-native e-signatures. Send, track, and seal contracts from your terminal — C
 - Upstash Redis for rate limiting
 - Sentry for error tracking
 
-## Local development
+## Setup on a fresh machine
+
+```bash
+git clone https://github.com/shahdadk/swiftsign.git
+cd swiftsign
+./scripts/bootstrap.sh
+```
+
+The bootstrap script installs Vercel CLI, logs you in (browser auth), links the
+checkout to the SwiftSign Vercel project, pulls production env vars into
+`.env.local`, and runs `npm install`. After it finishes, run `npm run dev` and
+you're operational.
+
+## Manual local development
 
 ```bash
 # Install (legacy-peer-deps is pinned in .npmrc, required for React 19 / Next 16)
@@ -28,7 +41,8 @@ npx prisma migrate deploy
 npm run dev
 ```
 
-Copy `.env.local.example` to `.env.local` and fill in the values.
+Copy `.env.local.example` to `.env.local` and fill in the values, or run
+`./scripts/bootstrap.sh` to pull them from Vercel.
 
 ## Commands
 
