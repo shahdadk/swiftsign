@@ -1,8 +1,39 @@
+// Inspect envelope state + audit log.
+// Usage: npx tsx --env-file=.env.local scripts/inspect-current.ts [envelopeId]
+//        (if no id supplied, dumps the 5 most recent envelopes)
+
 import { prisma } from '../src/lib/db'
 
 async function main() {
+  const envelopeId = process.argv[2]
+
+  if (!envelopeId) {
+    const recent = await prisma.envelope.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        subject: true,
+        status: true,
+        createdAt: true,
+        recipients: { select: { name: true, email: true, status: true } },
+      },
+    })
+    console.log(`\n${recent.length} most recent envelopes:`)
+    for (const e of recent) {
+      console.log(`\n  ${e.id}`)
+      console.log(`    ${e.subject}`)
+      console.log(`    ${e.status}, created ${e.createdAt.toISOString()}`)
+      for (const r of e.recipients) {
+        console.log(`    - [${r.status}] ${r.name} <${r.email}>`)
+      }
+    }
+    console.log(`\nFor details: npx tsx --env-file=.env.local scripts/inspect-current.ts <envelopeId>\n`)
+    return
+  }
+
   const env = await prisma.envelope.findUniqueOrThrow({
-    where: { id: 'aa7c1e06-6f67-4b26-92b9-3ab4143fd754' },
+    where: { id: envelopeId },
     include: {
       documents: {
         select: {
