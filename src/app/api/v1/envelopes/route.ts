@@ -285,32 +285,49 @@ export async function POST(request: Request) {
 
         let pageCount = 1
         const imageKeysList: string[] = []
+        let pageImages: Awaited<ReturnType<typeof renderPdfToImages>>
         try {
           // Reuse the already-loaded doc if anchor extraction loaded one;
           // otherwise load now (and let renderPdfToImages destroy it).
           const cachedDoc = loadedDocs.get(i)
-          const pageImages = cachedDoc
+          pageImages = cachedDoc
             ? await renderPdfToImages(cachedDoc)
             : await renderPdfToImages(buffer)
-          if (pageImages.length > MAX_PAGES) {
-            return NextResponse.json(
-              {
-                error: `Document "${doc.name}" has ${pageImages.length} pages; max ${MAX_PAGES} per document`,
-              },
-              { status: 413 }
-            )
-          }
-          pageCount = pageImages.length || 1
-          for (const img of pageImages) {
-            const imgKey = `envelopes/${envId}/pages/${i}-${img.page}.png`
-            await uploadPdf(imgKey, img.pngBuffer)
-            imageKeysList.push(imgKey)
-          }
         } catch (renderErr) {
-          logger.warn('PDF render skipped, continuing without images', {
-            err: renderErr instanceof Error ? renderErr.message : String(renderErr),
+          // Previously this swallowed the error and created an envelope with
+          // imageKeys: [], which the signer UI 404s on. Return 422 with the
+          // document index + reason BEFORE writing anything to the DB — the
+          // R2 originals we already uploaded for this doc become orphans, but
+          // a half-broken envelope is worse than a few orphan PDFs.
+          const reason = renderErr instanceof Error ? renderErr.message : String(renderErr)
+          logger.warn('PDF render failed, refusing envelope create', {
+            err: reason,
             docName: doc.name,
+            docIndex: i,
           })
+          return NextResponse.json(
+            {
+              error: 'pdf-render-failed',
+              documentIndex: i,
+              reason,
+            },
+            { status: 422 },
+          )
+        }
+
+        if (pageImages.length > MAX_PAGES) {
+          return NextResponse.json(
+            {
+              error: `Document "${doc.name}" has ${pageImages.length} pages; max ${MAX_PAGES} per document`,
+            },
+            { status: 413 }
+          )
+        }
+        pageCount = pageImages.length || 1
+        for (const img of pageImages) {
+          const imgKey = `envelopes/${envId}/pages/${i}-${img.page}.png`
+          await uploadPdf(imgKey, img.pngBuffer)
+          imageKeysList.push(imgKey)
         }
 
         docData.push({ name: doc.name, key, pageCount, imageKeys: imageKeysList })
