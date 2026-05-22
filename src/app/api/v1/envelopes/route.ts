@@ -38,15 +38,20 @@ const RecipientSchema = z.object({
   routingOrder: z.number().int().min(1).default(1),
 })
 
+// Field coordinates are percentages (0-100) of page width/height with a
+// top-left origin (see CLAUDE.md "Coordinate + indexing conventions").
+// Width/height are also percentages and default to 30 / 5 at insert time.
+// page: integer >= 1 OR -1 (anchor sentinel). Final page is also bounded
+// by document.pageCount at runtime (validated after render in Phase 1.5).
 const FieldSchema = z.object({
   recipientIndex: z.number().int().min(0),
   type: z.enum(['SIGNATURE', 'NAME', 'DATE', 'TEXT', 'INITIALS', 'CHECKBOX']),
   document: z.number().int().min(0),
   page: z.number().int().min(-1).default(1), // -1 means use anchor
-  x: z.number().default(0),
-  y: z.number().default(0),
-  width: z.number().optional(),
-  height: z.number().optional(),
+  x: z.number().min(0).max(100).default(0),
+  y: z.number().min(0).max(100).default(0),
+  width: z.number().min(0).max(100).optional(),
+  height: z.number().min(0).max(100).optional(),
   anchor: z.string().optional(),
   yOffset: z.number().optional(),
 })
@@ -331,6 +336,54 @@ export async function POST(request: Request) {
         }
 
         docData.push({ name: doc.name, key, pageCount, imageKeys: imageKeysList })
+      }
+
+      // --- Phase 1.5: Validate resolved field coords against per-document pageCount ---
+      //
+      // Prisma's Field schema doesn't constrain page/x/y at the DB level
+      // (would require a migration), so we enforce here before any insert.
+      //
+      // Zod already validated input x/y ∈ [0, 100] and page >= -1. We re-
+      // validate the RESOLVED values because:
+      //   - anchor resolution can produce x = f.x || (pos.x + 8), which
+      //     could land outside [0, 100] if the anchor is near the right
+      //     edge of the page.
+      //   - page must be in [1, document.pageCount], and pageCount is
+      //     only known after Phase 1 render.
+      const fieldErrors: Array<{ fieldIndex: number; reason: string }> = []
+      for (let fi = 0; fi < resolvedFields.length; fi++) {
+        const rf = resolvedFields[fi]
+        const docPageCount = docData[rf.document]?.pageCount ?? 0
+        if (!Number.isInteger(rf.page) || rf.page < 1 || rf.page > docPageCount) {
+          fieldErrors.push({
+            fieldIndex: fi,
+            reason: `page ${rf.page} out of range [1, ${docPageCount}] for document ${rf.document}`,
+          })
+        }
+        if (!(rf.x >= 0 && rf.x <= 100)) {
+          fieldErrors.push({
+            fieldIndex: fi,
+            reason: `x ${rf.x} out of range [0, 100] for document ${rf.document}`,
+          })
+        }
+        if (!(rf.y >= 0 && rf.y <= 100)) {
+          fieldErrors.push({
+            fieldIndex: fi,
+            reason: `y ${rf.y} out of range [0, 100] for document ${rf.document}`,
+          })
+        }
+      }
+      if (fieldErrors.length > 0) {
+        logger.warn('Refusing envelope create: invalid field coords', {
+          fieldErrors,
+        })
+        return NextResponse.json(
+          {
+            error: 'Invalid field coordinates',
+            fieldErrors,
+          },
+          { status: 400 },
+        )
       }
 
       // --- Phase 2: Fast DB writes in transaction ---
