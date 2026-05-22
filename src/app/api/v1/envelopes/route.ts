@@ -5,7 +5,12 @@ import { prisma } from '@/lib/db'
 import { authenticateApiKey } from '@/lib/auth'
 import { uploadPdf } from '@/lib/storage'
 import { logAudit } from '@/lib/audit'
-import { renderPdfToImages, findAnchorPosition } from '@/lib/pdf-renderer'
+import {
+  renderPdfToImages,
+  extractTextPositions,
+  type TextPosition,
+  type AnchorResult,
+} from '@/lib/pdf-renderer'
 import { logger } from '@/lib/logger'
 import { checkQuota } from '@/lib/quota'
 import { envelopeLimiterFor, rateLimitHeaders } from '@/lib/rate-limit'
@@ -151,15 +156,121 @@ export async function POST(request: Request) {
       )
     }
 
+    // --- Phase 0.5: Resolve anchor-based fields BEFORE any R2 work ---
+    //
+    // For each document referenced by an anchor-using field, extract text
+    // positions ONCE and reuse them for every anchor on that document. The
+    // previous implementation called findAnchorPosition() per-field via
+    // Promise.all interleaved with R2 uploads, which (a) re-parsed the PDF N
+    // times, and (b) silently swallowed any failure so the field landed at
+    // page=1, x=0, y=0 with no signal to the caller.
+    //
+    // We do this BEFORE Phase 1 (R2 upload + page render) so that an anchor
+    // failure rejects the request without leaving orphaned R2 objects.
+    const docsNeedingAnchors = new Set<number>()
+    for (const f of fields) {
+      if (f.anchor && f.anchor.length > 0) docsNeedingAnchors.add(f.document)
+    }
+
+    const docTextPositions = new Map<number, TextPosition[]>()
+    const docExtractionErrors = new Map<number, string>()
+    for (const docIdx of docsNeedingAnchors) {
+      const buffer = docBuffersPre[docIdx]
+      if (!buffer) {
+        docExtractionErrors.set(docIdx, 'document buffer missing')
+        continue
+      }
+      try {
+        const positions = await extractTextPositions(buffer)
+        docTextPositions.set(docIdx, positions)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        docExtractionErrors.set(docIdx, msg)
+        logger.warn('Anchor text extraction failed for document', {
+          docIndex: docIdx,
+          docName: documents[docIdx]?.name,
+          err: msg,
+        })
+      }
+    }
+
+    const resolveAnchor = (
+      positions: TextPosition[],
+      anchor: string,
+    ): AnchorResult | null => {
+      const needle = anchor.toLowerCase()
+      let lastMatch: AnchorResult | null = null
+      for (const pos of positions) {
+        if (pos.text.toLowerCase().includes(needle)) {
+          lastMatch = {
+            page: pos.page,
+            x: pos.x,
+            y: pos.y,
+            xEnd: pos.x + pos.width,
+          }
+        }
+      }
+      return lastMatch
+    }
+
+    const unresolvedAnchors: Array<{ anchor: string; document: number; reason: string }> = []
+    const resolvedFields = fields.map((f) => {
+      let page = f.page
+      let x = f.x
+      let y = f.y
+
+      if (f.anchor && f.anchor.length > 0) {
+        const positions = docTextPositions.get(f.document)
+        if (!positions) {
+          unresolvedAnchors.push({
+            anchor: f.anchor,
+            document: f.document,
+            reason:
+              docExtractionErrors.get(f.document) ??
+              'no text positions extracted for document',
+          })
+        } else {
+          const pos = resolveAnchor(positions, f.anchor)
+          if (pos) {
+            page = pos.page
+            x = f.x || pos.x + 8
+            y = pos.y + (f.yOffset ?? -2)
+          } else {
+            unresolvedAnchors.push({
+              anchor: f.anchor,
+              document: f.document,
+              reason: 'anchor text not found in document',
+            })
+          }
+        }
+      }
+
+      return { ...f, page: page < 1 ? 1 : page, x, y }
+    })
+
+    // Surface anchor-resolution failures to the caller. Previously these
+    // were swallowed and the field silently landed at (page=1, x=0, y=0),
+    // which is invisible until a recipient opens the document.
+    if (unresolvedAnchors.length > 0) {
+      logger.warn('Refusing envelope create: unresolved anchors', {
+        unresolvedAnchors,
+      })
+      return NextResponse.json(
+        {
+          error: 'Anchor resolution failed for one or more fields',
+          unresolvedAnchors,
+        },
+        { status: 422 },
+      )
+    }
+
     // --- Phase 1: Heavy I/O (upload PDFs, render images) OUTSIDE transaction ---
     const envId = crypto.randomUUID()
-    const docBuffers: Buffer[] = []
     const docData: Array<{ name: string; key: string; pageCount: number; imageKeys: string[] }> = []
 
     for (let i = 0; i < documents.length; i++) {
       const doc = documents[i]
       const buffer = docBuffersPre[i]
-      docBuffers.push(buffer)
       const key = `envelopes/${envId}/documents/${i}-${doc.name}`
 
       await uploadPdf(key, buffer)
@@ -191,31 +302,6 @@ export async function POST(request: Request) {
 
       docData.push({ name: doc.name, key, pageCount, imageKeys: imageKeysList })
     }
-
-    // Resolve anchor-based fields
-    const resolvedFields = await Promise.all(fields.map(async (f) => {
-      let page = f.page
-      let x = f.x
-      let y = f.y
-
-      if (f.anchor && docBuffers[f.document]) {
-        try {
-          const pos = await findAnchorPosition(docBuffers[f.document], f.anchor)
-          if (pos) {
-            page = pos.page
-            x = f.x || (pos.x + 8)
-            y = pos.y + (f.yOffset ?? -2)
-          }
-        } catch (anchorErr) {
-          logger.warn('Anchor resolution failed', {
-            anchor: f.anchor,
-            err: anchorErr instanceof Error ? anchorErr.message : String(anchorErr),
-          })
-        }
-      }
-
-      return { ...f, page: page < 1 ? 1 : page, x, y }
-    }))
 
     // --- Phase 2: Fast DB writes in transaction ---
     const envelope = await prisma.$transaction(async (tx: Tx) => {
