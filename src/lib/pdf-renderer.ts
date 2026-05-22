@@ -81,15 +81,46 @@ async function loadDocument(pdfBuffer: Buffer) {
   }
 }
 
+// A loaded pdfjs document. Use `loadPdf` to create one; the caller MUST call
+// `.destroy()` when done (or use `withLoadedPdf` which does it for you).
+type LoadedPdfDoc = Awaited<ReturnType<typeof loadDocument>>;
+
+/**
+ * Load a PDF once and share the parsed document across multiple operations.
+ *
+ * The caller is responsible for calling `doc.destroy()` when done — usually
+ * easier to use `withLoadedPdf(buf, async (doc) => ...)` instead.
+ */
+export async function loadPdf(pdfBuffer: Buffer): Promise<LoadedPdfDoc> {
+  return loadDocument(pdfBuffer);
+}
+
+/**
+ * Convenience wrapper: load a PDF once, run `fn` with the doc, and destroy
+ * the doc on the way out (even if `fn` throws).
+ */
+export async function withLoadedPdf<T>(
+  pdfBuffer: Buffer,
+  fn: (doc: LoadedPdfDoc) => Promise<T>,
+): Promise<T> {
+  const doc = await loadDocument(pdfBuffer);
+  try {
+    return await fn(doc);
+  } finally {
+    doc.destroy();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // renderPdfToImages
 // ---------------------------------------------------------------------------
 
 export async function renderPdfToImages(
-  pdfBuffer: Buffer,
+  source: Buffer | LoadedPdfDoc,
   scale = 2,
 ): Promise<PageImage[]> {
-  const doc = await loadDocument(pdfBuffer);
+  const ownsDoc = Buffer.isBuffer(source);
+  const doc: LoadedPdfDoc = ownsDoc ? await loadDocument(source as Buffer) : (source as LoadedPdfDoc);
   const images: PageImage[] = [];
 
   try {
@@ -127,7 +158,7 @@ export async function renderPdfToImages(
       }
     }
   } finally {
-    doc.destroy();
+    if (ownsDoc) doc.destroy();
   }
 
   return images;
@@ -138,9 +169,10 @@ export async function renderPdfToImages(
 // ---------------------------------------------------------------------------
 
 export async function extractTextPositions(
-  pdfBuffer: Buffer,
+  source: Buffer | LoadedPdfDoc,
 ): Promise<TextPosition[]> {
-  const doc = await loadDocument(pdfBuffer);
+  const ownsDoc = Buffer.isBuffer(source);
+  const doc: LoadedPdfDoc = ownsDoc ? await loadDocument(source as Buffer) : (source as LoadedPdfDoc);
   const positions: TextPosition[] = [];
 
   try {
@@ -178,7 +210,7 @@ export async function extractTextPositions(
       }
     }
   } finally {
-    doc.destroy();
+    if (ownsDoc) doc.destroy();
   }
 
   return positions;

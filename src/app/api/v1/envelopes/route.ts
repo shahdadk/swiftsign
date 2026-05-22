@@ -8,6 +8,7 @@ import { logAudit } from '@/lib/audit'
 import {
   renderPdfToImages,
   extractTextPositions,
+  loadPdf,
   type TextPosition,
   type AnchorResult,
 } from '@/lib/pdf-renderer'
@@ -156,225 +157,248 @@ export async function POST(request: Request) {
       )
     }
 
-    // --- Phase 0.5: Resolve anchor-based fields BEFORE any R2 work ---
+    // --- Phase 0.5: Load each PDF ONCE and resolve anchor-based fields ---
     //
-    // For each document referenced by an anchor-using field, extract text
-    // positions ONCE and reuse them for every anchor on that document. The
-    // previous implementation called findAnchorPosition() per-field via
-    // Promise.all interleaved with R2 uploads, which (a) re-parsed the PDF N
-    // times, and (b) silently swallowed any failure so the field landed at
-    // page=1, x=0, y=0 with no signal to the caller.
+    // The previous implementation parsed each anchor-using PDF up to twice:
+    // once in extractTextPositions() during anchor resolution, and again in
+    // renderPdfToImages() during Phase 1. We now call loadPdf() exactly once
+    // per document and reuse the parsed doc for both operations.
     //
-    // We do this BEFORE Phase 1 (R2 upload + page render) so that an anchor
-    // failure rejects the request without leaving orphaned R2 objects.
+    // We do anchor resolution BEFORE Phase 1 (R2 upload + page render) so an
+    // anchor failure rejects the request without leaving orphaned R2 objects.
     const docsNeedingAnchors = new Set<number>()
     for (const f of fields) {
       if (f.anchor && f.anchor.length > 0) docsNeedingAnchors.add(f.document)
     }
 
-    const docTextPositions = new Map<number, TextPosition[]>()
-    const docExtractionErrors = new Map<number, string>()
-    for (const docIdx of docsNeedingAnchors) {
-      const buffer = docBuffersPre[docIdx]
-      if (!buffer) {
-        docExtractionErrors.set(docIdx, 'document buffer missing')
-        continue
-      }
-      try {
-        const positions = await extractTextPositions(buffer)
-        docTextPositions.set(docIdx, positions)
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        docExtractionErrors.set(docIdx, msg)
-        logger.warn('Anchor text extraction failed for document', {
-          docIndex: docIdx,
-          docName: documents[docIdx]?.name,
-          err: msg,
-        })
-      }
-    }
+    // Map of docIdx -> loaded pdfjs doc, shared between anchor extraction and
+    // page rendering. The finally block at the bottom of the try below
+    // destroys every loaded doc, even on error.
+    type LoadedDoc = Awaited<ReturnType<typeof loadPdf>>
+    const loadedDocs = new Map<number, LoadedDoc>()
 
-    const resolveAnchor = (
-      positions: TextPosition[],
-      anchor: string,
-    ): AnchorResult | null => {
-      const needle = anchor.toLowerCase()
-      let lastMatch: AnchorResult | null = null
-      for (const pos of positions) {
-        if (pos.text.toLowerCase().includes(needle)) {
-          lastMatch = {
-            page: pos.page,
-            x: pos.x,
-            y: pos.y,
-            xEnd: pos.x + pos.width,
-          }
+    try {
+      const docTextPositions = new Map<number, TextPosition[]>()
+      const docExtractionErrors = new Map<number, string>()
+      for (const docIdx of docsNeedingAnchors) {
+        const buffer = docBuffersPre[docIdx]
+        if (!buffer) {
+          docExtractionErrors.set(docIdx, 'document buffer missing')
+          continue
+        }
+        try {
+          const doc = await loadPdf(buffer)
+          loadedDocs.set(docIdx, doc)
+          const positions = await extractTextPositions(doc)
+          docTextPositions.set(docIdx, positions)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          docExtractionErrors.set(docIdx, msg)
+          logger.warn('Anchor text extraction failed for document', {
+            docIndex: docIdx,
+            docName: documents[docIdx]?.name,
+            err: msg,
+          })
         }
       }
-      return lastMatch
-    }
 
-    const unresolvedAnchors: Array<{ anchor: string; document: number; reason: string }> = []
-    const resolvedFields = fields.map((f) => {
-      let page = f.page
-      let x = f.x
-      let y = f.y
+      const resolveAnchor = (
+        positions: TextPosition[],
+        anchor: string,
+      ): AnchorResult | null => {
+        const needle = anchor.toLowerCase()
+        let lastMatch: AnchorResult | null = null
+        for (const pos of positions) {
+          if (pos.text.toLowerCase().includes(needle)) {
+            lastMatch = {
+              page: pos.page,
+              x: pos.x,
+              y: pos.y,
+              xEnd: pos.x + pos.width,
+            }
+          }
+        }
+        return lastMatch
+      }
 
-      if (f.anchor && f.anchor.length > 0) {
-        const positions = docTextPositions.get(f.document)
-        if (!positions) {
-          unresolvedAnchors.push({
-            anchor: f.anchor,
-            document: f.document,
-            reason:
-              docExtractionErrors.get(f.document) ??
-              'no text positions extracted for document',
-          })
-        } else {
-          const pos = resolveAnchor(positions, f.anchor)
-          if (pos) {
-            page = pos.page
-            x = f.x || pos.x + 8
-            y = pos.y + (f.yOffset ?? -2)
-          } else {
+      const unresolvedAnchors: Array<{ anchor: string; document: number; reason: string }> = []
+      const resolvedFields = fields.map((f) => {
+        let page = f.page
+        let x = f.x
+        let y = f.y
+
+        if (f.anchor && f.anchor.length > 0) {
+          const positions = docTextPositions.get(f.document)
+          if (!positions) {
             unresolvedAnchors.push({
               anchor: f.anchor,
               document: f.document,
-              reason: 'anchor text not found in document',
+              reason:
+                docExtractionErrors.get(f.document) ??
+                'no text positions extracted for document',
             })
+          } else {
+            const pos = resolveAnchor(positions, f.anchor)
+            if (pos) {
+              page = pos.page
+              x = f.x || pos.x + 8
+              y = pos.y + (f.yOffset ?? -2)
+            } else {
+              unresolvedAnchors.push({
+                anchor: f.anchor,
+                document: f.document,
+                reason: 'anchor text not found in document',
+              })
+            }
           }
         }
-      }
 
-      return { ...f, page: page < 1 ? 1 : page, x, y }
-    })
-
-    // Surface anchor-resolution failures to the caller. Previously these
-    // were swallowed and the field silently landed at (page=1, x=0, y=0),
-    // which is invisible until a recipient opens the document.
-    if (unresolvedAnchors.length > 0) {
-      logger.warn('Refusing envelope create: unresolved anchors', {
-        unresolvedAnchors,
+        return { ...f, page: page < 1 ? 1 : page, x, y }
       })
-      return NextResponse.json(
-        {
-          error: 'Anchor resolution failed for one or more fields',
+
+      // Surface anchor-resolution failures to the caller. Previously these
+      // were swallowed and the field silently landed at (page=1, x=0, y=0),
+      // which is invisible until a recipient opens the document.
+      if (unresolvedAnchors.length > 0) {
+        logger.warn('Refusing envelope create: unresolved anchors', {
           unresolvedAnchors,
-        },
-        { status: 422 },
-      )
-    }
+        })
+        return NextResponse.json(
+          {
+            error: 'Anchor resolution failed for one or more fields',
+            unresolvedAnchors,
+          },
+          { status: 422 },
+        )
+      }
 
-    // --- Phase 1: Heavy I/O (upload PDFs, render images) OUTSIDE transaction ---
-    const envId = crypto.randomUUID()
-    const docData: Array<{ name: string; key: string; pageCount: number; imageKeys: string[] }> = []
+      // --- Phase 1: Heavy I/O (upload PDFs, render images) OUTSIDE transaction ---
+      const envId = crypto.randomUUID()
+      const docData: Array<{ name: string; key: string; pageCount: number; imageKeys: string[] }> = []
 
-    for (let i = 0; i < documents.length; i++) {
-      const doc = documents[i]
-      const buffer = docBuffersPre[i]
-      const key = `envelopes/${envId}/documents/${i}-${doc.name}`
+      for (let i = 0; i < documents.length; i++) {
+        const doc = documents[i]
+        const buffer = docBuffersPre[i]
+        const key = `envelopes/${envId}/documents/${i}-${doc.name}`
 
-      await uploadPdf(key, buffer)
+        await uploadPdf(key, buffer)
 
-      let pageCount = 1
-      const imageKeysList: string[] = []
-      try {
-        const pageImages = await renderPdfToImages(buffer)
-        if (pageImages.length > MAX_PAGES) {
-          return NextResponse.json(
-            {
-              error: `Document "${doc.name}" has ${pageImages.length} pages; max ${MAX_PAGES} per document`,
+        let pageCount = 1
+        const imageKeysList: string[] = []
+        try {
+          // Reuse the already-loaded doc if anchor extraction loaded one;
+          // otherwise load now (and let renderPdfToImages destroy it).
+          const cachedDoc = loadedDocs.get(i)
+          const pageImages = cachedDoc
+            ? await renderPdfToImages(cachedDoc)
+            : await renderPdfToImages(buffer)
+          if (pageImages.length > MAX_PAGES) {
+            return NextResponse.json(
+              {
+                error: `Document "${doc.name}" has ${pageImages.length} pages; max ${MAX_PAGES} per document`,
+              },
+              { status: 413 }
+            )
+          }
+          pageCount = pageImages.length || 1
+          for (const img of pageImages) {
+            const imgKey = `envelopes/${envId}/pages/${i}-${img.page}.png`
+            await uploadPdf(imgKey, img.pngBuffer)
+            imageKeysList.push(imgKey)
+          }
+        } catch (renderErr) {
+          logger.warn('PDF render skipped, continuing without images', {
+            err: renderErr instanceof Error ? renderErr.message : String(renderErr),
+            docName: doc.name,
+          })
+        }
+
+        docData.push({ name: doc.name, key, pageCount, imageKeys: imageKeysList })
+      }
+
+      // --- Phase 2: Fast DB writes in transaction ---
+      const envelope = await prisma.$transaction(async (tx: Tx) => {
+        const env = await tx.envelope.create({
+          data: { id: envId, userId: user.id, subject, message: message ?? null },
+        })
+
+        const docRecords: Array<{ id: string }> = []
+        for (let i = 0; i < docData.length; i++) {
+          const d = docData[i]
+          const record = await tx.document.create({
+            data: {
+              envelopeId: env.id,
+              name: d.name,
+              originalKey: d.key,
+              pageCount: d.pageCount,
+              imageKeys: d.imageKeys.length > 0 ? d.imageKeys : undefined,
+              order: i,
             },
-            { status: 413 }
-          )
+          })
+          docRecords.push(record)
         }
-        pageCount = pageImages.length || 1
-        for (const img of pageImages) {
-          const imgKey = `envelopes/${envId}/pages/${i}-${img.page}.png`
-          await uploadPdf(imgKey, img.pngBuffer)
-          imageKeysList.push(imgKey)
+
+        const recipientRecords: Array<{ id: string }> = []
+        for (const r of recipients) {
+          const record = await tx.recipient.create({
+            data: {
+              envelopeId: env.id,
+              name: r.name,
+              email: r.email,
+              role: r.role,
+              routingOrder: r.routingOrder,
+            },
+          })
+          recipientRecords.push(record)
         }
-      } catch (renderErr) {
-        logger.warn('PDF render skipped, continuing without images', {
-          err: renderErr instanceof Error ? renderErr.message : String(renderErr),
-          docName: doc.name,
+
+        for (const f of resolvedFields) {
+          await tx.field.create({
+            data: {
+              documentId: docRecords[f.document].id,
+              recipientId: recipientRecords[f.recipientIndex].id,
+              type: f.type,
+              page: f.page,
+              x: f.x,
+              y: f.y,
+              width: f.width ?? 30,
+              height: f.height ?? 5,
+            },
+          })
+        }
+
+        return tx.envelope.findUniqueOrThrow({
+          where: { id: env.id },
+          include: {
+            documents: { orderBy: { order: 'asc' } },
+            recipients: { orderBy: { routingOrder: 'asc' } },
+          },
         })
-      }
-
-      docData.push({ name: doc.name, key, pageCount, imageKeys: imageKeysList })
-    }
-
-    // --- Phase 2: Fast DB writes in transaction ---
-    const envelope = await prisma.$transaction(async (tx: Tx) => {
-      const env = await tx.envelope.create({
-        data: { id: envId, userId: user.id, subject, message: message ?? null },
       })
 
-      const docRecords: Array<{ id: string }> = []
-      for (let i = 0; i < docData.length; i++) {
-        const d = docData[i]
-        const record = await tx.document.create({
-          data: {
-            envelopeId: env.id,
-            name: d.name,
-            originalKey: d.key,
-            pageCount: d.pageCount,
-            imageKeys: d.imageKeys.length > 0 ? d.imageKeys : undefined,
-            order: i,
-          },
-        })
-        docRecords.push(record)
-      }
-
-      const recipientRecords: Array<{ id: string }> = []
-      for (const r of recipients) {
-        const record = await tx.recipient.create({
-          data: {
-            envelopeId: env.id,
-            name: r.name,
-            email: r.email,
-            role: r.role,
-            routingOrder: r.routingOrder,
-          },
-        })
-        recipientRecords.push(record)
-      }
-
-      for (const f of resolvedFields) {
-        await tx.field.create({
-          data: {
-            documentId: docRecords[f.document].id,
-            recipientId: recipientRecords[f.recipientIndex].id,
-            type: f.type,
-            page: f.page,
-            x: f.x,
-            y: f.y,
-            width: f.width ?? 30,
-            height: f.height ?? 5,
-          },
-        })
-      }
-
-      return tx.envelope.findUniqueOrThrow({
-        where: { id: env.id },
-        include: {
-          documents: { orderBy: { order: 'asc' } },
-          recipients: { orderBy: { routingOrder: 'asc' } },
+      // Audit log (after transaction commits)
+      await logAudit(envelope.id, 'ENVELOPE_CREATED', {
+        actorName: user.name ?? undefined,
+        actorEmail: user.email,
+        metadata: {
+          documentCount: documents.length,
+          recipientCount: recipients.length,
+          fieldCount: fields.length,
         },
       })
-    })
 
-    // Audit log (after transaction commits)
-    await logAudit(envelope.id, 'ENVELOPE_CREATED', {
-      actorName: user.name ?? undefined,
-      actorEmail: user.email,
-      metadata: {
-        documentCount: documents.length,
-        recipientCount: recipients.length,
-        fieldCount: fields.length,
-      },
-    })
-
-    return NextResponse.json(envelope, { status: 201 })
+      return NextResponse.json(envelope, { status: 201 })
+    } finally {
+      // Destroy every doc we loaded for shared extraction + rendering.
+      // Safe to call destroy() multiple times; pdfjs guards against it.
+      for (const doc of loadedDocs.values()) {
+        try {
+          doc.destroy()
+        } catch {
+          // ignore: best-effort cleanup
+        }
+      }
+    }
   } catch (err) {
     logger.error(err, { route: 'POST /api/v1/envelopes' })
     return NextResponse.json(
