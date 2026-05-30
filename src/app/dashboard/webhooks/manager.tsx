@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { CopyButton } from '@/components/copy-button'
 
 const EVENTS = [
   'envelope.sent',
@@ -87,54 +88,111 @@ export function WebhooksManager({ initial }: { initial: Endpoint[] }) {
 
   return (
     <>
+      {/* One-time secret reveal. SwiftSign generates the secret at endpoint
+          creation; this is the only time the cleartext value is exposed. */}
       {revealedSecret && (
-        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <p className="text-sm font-medium text-amber-900 mb-2">
-            Save your signing secret. This is the only time it will be shown.
-          </p>
-          <div className="bg-gray-900 text-amber-300 rounded-lg px-3 py-2 text-xs font-mono break-all select-all">
-            {revealedSecret.secret}
+        <div
+          className="dev-card"
+          style={{
+            background: 'rgba(245, 158, 11, 0.06)',
+            borderColor: 'rgba(245, 158, 11, 0.25)',
+            marginBottom: 24,
+          }}
+        >
+          <div className="eyebrow" style={{ color: '#b45309', marginBottom: 8 }}>
+            Save this · shown once
           </div>
+          <p style={{ color: 'var(--ink-2)', fontSize: 14, marginBottom: 12 }}>
+            Copy your signing secret now and paste it into your service. We
+            don&apos;t store the cleartext value — you can&apos;t retrieve it later.
+          </p>
+          <pre
+            className="dev-card-code mono"
+            style={{ position: 'relative', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}
+          >
+            <code>{revealedSecret.secret}</code>
+            <span style={{ position: 'absolute', top: 12, right: 12 }}>
+              <CopyButton value={revealedSecret.secret} variant="inline" />
+            </span>
+          </pre>
           <button
             onClick={() => setRevealedSecret(null)}
-            className="text-sm text-amber-700 hover:underline mt-3"
+            className="btn-link"
+            style={{ marginTop: 12 }}
           >
             I&apos;ve saved it
           </button>
         </div>
       )}
 
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Endpoints</h2>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}
+      >
+        <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
+          Endpoints
+        </h2>
         {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="h-9 px-4 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
-          >
+          <button onClick={() => setShowForm(true)} className="btn btn-primary">
             New endpoint
           </button>
         )}
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-          <label className="block text-sm font-medium text-gray-900 mb-1">
+        <div className="dev-card" style={{ marginBottom: 24 }}>
+          <label
+            htmlFor="webhook-url"
+            className="eyebrow"
+            style={{ display: 'block', marginBottom: 6 }}
+          >
             URL
           </label>
           <input
+            id="webhook-url"
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://example.com/webhooks/swiftsign"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-4"
+            className="mono"
+            style={{
+              width: '100%',
+              border: '1px solid var(--line)',
+              borderRadius: 'var(--r-md)',
+              padding: '10px 12px',
+              fontSize: 13,
+              marginBottom: 20,
+              background: 'var(--surface)',
+            }}
           />
 
-          <p className="text-sm font-medium text-gray-900 mb-2">Events</p>
-          <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="eyebrow" style={{ marginBottom: 10 }}>
+            Events
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 8,
+              marginBottom: 16,
+            }}
+          >
             {EVENTS.map((ev) => (
               <label
                 key={ev}
-                className="flex items-center gap-2 text-sm text-gray-700"
+                className="mono"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 12.5,
+                  color: 'var(--ink-2)',
+                  cursor: 'pointer',
+                }}
               >
                 <input
                   type="checkbox"
@@ -147,25 +205,34 @@ export function WebhooksManager({ initial }: { initial: Endpoint[] }) {
                     )
                   }}
                 />
-                <code className="text-xs">{ev}</code>
+                <code>{ev}</code>
               </label>
             ))}
           </div>
 
-          {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+          {error && (
+            <p
+              style={{
+                fontSize: 13,
+                color: '#b91c1c',
+                marginBottom: 12,
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              {error}
+            </p>
+          )}
 
-          <div className="flex gap-3">
+          <div style={{ display: 'flex', gap: 10 }}>
             <button
               onClick={create}
               disabled={creating || !url || selected.length === 0}
-              className="h-9 px-4 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
+              className="btn btn-primary"
+              style={{ opacity: creating || !url || selected.length === 0 ? 0.6 : 1 }}
             >
-              {creating ? 'Creating…' : 'Create'}
+              {creating ? 'Creating…' : 'Create endpoint'}
             </button>
-            <button
-              onClick={() => setShowForm(false)}
-              className="h-9 px-4 text-sm text-gray-600 hover:text-gray-900"
-            >
+            <button onClick={() => setShowForm(false)} className="btn btn-ghost">
               Cancel
             </button>
           </div>
@@ -173,52 +240,60 @@ export function WebhooksManager({ initial }: { initial: Endpoint[] }) {
       )}
 
       {endpoints.length === 0 && !showForm ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <p className="text-sm text-gray-500">
-            No endpoints yet. Add one to start receiving callbacks.
-          </p>
+        <div className="env-empty">
+          <div># no endpoints yet</div>
+          <div style={{ marginTop: 6 }}>
+            <span>add one to start receiving callbacks.</span>
+          </div>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="env-grid">
           {endpoints.map((ep) => (
-            <div
-              key={ep.id}
-              className="bg-white rounded-xl border border-gray-200 p-5"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 break-all">
+            <div key={ep.id} className="env-card">
+              <div className="env-card-head">
+                <div className="env-card-title">
+                  <h3 style={{ wordBreak: 'break-all', whiteSpace: 'normal' }}>
                     {ep.url}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {ep.events.length} event
-                    {ep.events.length !== 1 ? 's' : ''} ·{' '}
+                  </h3>
+                  <p className="env-card-docs">
+                    {ep.events.length} event{ep.events.length !== 1 ? 's' : ''} ·{' '}
                     {new Date(ep.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-sm text-gray-600">
+                <div
+                  className="env-card-actions"
+                  style={{ flexShrink: 0 }}
+                >
+                  <label
+                    className="mono"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 12,
+                      color: 'var(--ink-3)',
+                      cursor: 'pointer',
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={ep.isActive}
                       onChange={(e) => toggle(ep.id, e.target.checked)}
                     />
-                    Active
+                    active
                   </label>
                   <button
                     onClick={() => remove(ep.id)}
-                    className="text-sm text-red-600 hover:underline"
+                    className="btn-link"
+                    style={{ color: '#b91c1c' }}
                   >
-                    Delete
+                    delete
                   </button>
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
+              <div className="env-chips">
                 {ep.events.map((ev) => (
-                  <code
-                    key={ev}
-                    className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded"
-                  >
+                  <code key={ev} className="env-chip">
                     {ev}
                   </code>
                 ))}
@@ -228,22 +303,29 @@ export function WebhooksManager({ initial }: { initial: Endpoint[] }) {
         </div>
       )}
 
-      <div className="mt-8 bg-gray-50 rounded-xl border border-gray-200 p-5">
-        <h3 className="font-semibold text-gray-900 mb-2 text-sm">
-          Verifying signatures
-        </h3>
-        <p className="text-sm text-gray-600 mb-3">
+      {/* Verifying signatures — docs block. .dev-card for the same surface
+          treatment as the cards above. */}
+      <div className="dev-card" style={{ marginTop: 32 }}>
+        <div className="dev-card-head">
+          <span className="dev-card-icon" aria-hidden>
+            🔐
+          </span>
+          <span className="dev-card-kicker mono">HMAC-SHA256</span>
+        </div>
+        <h3>Verifying signatures</h3>
+        <p style={{ color: 'var(--ink-3)', fontSize: 13.5, marginBottom: 14 }}>
           Each delivery carries{' '}
-          <code className="text-xs bg-gray-200 px-1 rounded">
+          <code className="inline-code">
             SwiftSign-Signature: t=&lt;ts&gt;,v1=&lt;hex&gt;
           </code>
           . Compute{' '}
-          <code className="text-xs bg-gray-200 px-1 rounded">
+          <code className="inline-code">
             HMAC_SHA256(secret, &lt;ts&gt; + &quot;.&quot; + raw body)
           </code>{' '}
-          and compare.
+          and compare in constant time.
         </p>
-        <pre className="bg-gray-900 text-green-400 rounded-lg px-3 py-2 text-xs font-mono overflow-x-auto">
+        <pre className="dev-card-code mono" style={{ position: 'relative' }}>
+          <code>
 {`const sig = req.headers['swiftsign-signature']
 const [tPart, v1Part] = sig.split(',')
 const ts = tPart.split('=')[1]
@@ -254,6 +336,22 @@ const ok = crypto.timingSafeEqual(
   Buffer.from(v1, 'hex'),
   Buffer.from(expected, 'hex')
 )`}
+          </code>
+          <span style={{ position: 'absolute', top: 12, right: 12 }}>
+            <CopyButton
+              variant="inline"
+              value={`const sig = req.headers['swiftsign-signature']
+const [tPart, v1Part] = sig.split(',')
+const ts = tPart.split('=')[1]
+const v1 = v1Part.split('=')[1]
+const expected = crypto.createHmac('sha256', SECRET)
+  .update(\`\${ts}.\${rawBody}\`).digest('hex')
+const ok = crypto.timingSafeEqual(
+  Buffer.from(v1, 'hex'),
+  Buffer.from(expected, 'hex')
+)`}
+            />
+          </span>
         </pre>
       </div>
     </>

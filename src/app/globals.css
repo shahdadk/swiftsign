@@ -1102,3 +1102,361 @@ p { color: var(--ink-3); line-height: 1.55; margin: 0; }
   touch-action: none;
   cursor: crosshair;
 }
+
+/* ========== DASHBOARD (env-card / activity-feed / dash-stats) ========== */
+/* Built to match the landing's .dev-card visual rhythm so the dashboard
+   reads as the same product. Tokens only — no Tailwind colors here. */
+
+/* Three-number summary row in the dashboard hero. */
+.dash-stats {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-top: 28px;
+  font-family: var(--font-mono);
+}
+.dash-stats a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--ink-3);
+  transition: color 120ms ease;
+}
+.dash-stats a:hover { color: var(--ink); }
+.dash-stats-num {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink);
+  font-feature-settings: "tnum";
+}
+.dash-stats-label {
+  font-size: 12px;
+  color: var(--ink-4);
+  letter-spacing: 0.02em;
+}
+
+/* Two-step setup pane stacked under the hero install card. */
+.dash-setup {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0 auto;
+}
+.dash-setup-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash-setup-label .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  font-size: 10px;
+  color: var(--ink-3);
+}
+.dash-setup-prompt {
+  position: relative;
+  background: var(--ink);
+  color: #e5e7eb;
+  border-radius: var(--r-md);
+  padding: 16px 18px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.dash-setup-prompt::before {
+  content: "❯";
+  color: var(--accent);
+  margin-right: 10px;
+  font-weight: 600;
+}
+.dash-setup-prompt .copy {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+/* Envelope grid — each row a card matching .dev-card rhythm. */
+.env-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.env-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 20px 22px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.env-card:hover {
+  border-color: var(--line-2);
+  box-shadow: 0 1px 2px rgba(10, 11, 13, 0.04);
+}
+.env-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.env-card-title {
+  flex: 1;
+  min-width: 0;
+}
+.env-card-title h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.env-card-docs {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-4);
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.env-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-4);
+  flex-wrap: wrap;
+}
+.env-card-meta .sep { color: var(--ink-5); }
+.env-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.env-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.env-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.env-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(10, 11, 13, 0.04);
+  color: var(--ink-3);
+  border: 1px solid transparent;
+}
+.env-chip-signed {
+  background: rgba(14, 160, 107, 0.08);
+  color: #047857;
+}
+.env-chip-declined {
+  background: rgba(239, 68, 68, 0.08);
+  color: #b91c1c;
+}
+
+/* Status pill — single-word, mono, lower-case, color-coded by status. */
+.env-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid;
+  background: rgba(10, 11, 13, 0.04);
+  border-color: var(--line);
+  color: var(--ink-3);
+  text-transform: lowercase;
+  flex-shrink: 0;
+}
+.env-status.completed {
+  background: rgba(14, 160, 107, 0.10);
+  border-color: rgba(14, 160, 107, 0.25);
+  color: #047857;
+}
+.env-status.sent {
+  background: var(--accent-soft);
+  border-color: rgba(43, 92, 255, 0.25);
+  color: var(--accent);
+}
+.env-status.declined {
+  background: rgba(239, 68, 68, 0.10);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #b91c1c;
+}
+.env-status.voided {
+  background: rgba(245, 158, 11, 0.10);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #b45309;
+}
+.env-status.draft {
+  background: rgba(10, 11, 13, 0.04);
+  border-color: var(--line);
+  color: var(--ink-3);
+}
+
+/* Compact mono action button — used for "↓ signed PDF" / "↓ certificate" / "open →" */
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 6px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.btn-link:hover {
+  border-color: var(--line-2);
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.btn-link.btn-link-primary {
+  color: var(--accent);
+  border-color: transparent;
+}
+.btn-link.btn-link-primary:hover {
+  background: var(--accent-soft);
+  border-color: rgba(43, 92, 255, 0.25);
+}
+
+/* Activity feed — reuses landing's .term-* skin. Wrapper for layout
+   tweaks (full width, no left padding inside the terminal body). */
+.activity-feed {
+  width: 100%;
+  margin: 32px 0;
+}
+.activity-feed .term-body {
+  padding: 18px 22px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.activity-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #e5e7eb;
+}
+.activity-row + .activity-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+.activity-icon {
+  display: inline-flex;
+  width: 14px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.activity-icon.sent { color: var(--accent); }
+.activity-icon.viewed { color: rgba(255, 255, 255, 0.6); }
+.activity-icon.signed { color: var(--success); }
+.activity-icon.completed { color: var(--success); }
+.activity-icon.declined { color: #f87171; }
+.activity-icon.voided { color: #fbbf24; }
+.activity-text { flex: 1; min-width: 0; }
+.activity-time {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.activity-empty {
+  color: rgba(255, 255, 255, 0.35);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+/* Section spacer / divider, matches landing rhythm without dragging in
+   a whole <section>. */
+.dash-section {
+  padding: 56px 0 0;
+}
+.dash-section .section-head {
+  text-align: left;
+  margin-bottom: 24px;
+}
+.dash-section .section-head h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 8px 0 0;
+  color: var(--ink);
+}
+
+/* Quota strip — low-emphasis mono row + thin progress bar. */
+.quota-strip {
+  margin-top: 56px;
+  padding: 14px 18px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.quota-strip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+.quota-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.quota-bar > div {
+  height: 100%;
+  background: var(--accent);
+  transition: width 300ms ease;
+}
+.quota-bar.warn > div { background: #f59e0b; }
+.quota-bar.over > div { background: #ef4444; }
+
+/* Empty state for envelope list — dashed border, mono comment. */
+.env-empty {
+  padding: 48px 24px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-lg);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-4);
+}
+.env-empty span { color: var(--ink-3); }
+

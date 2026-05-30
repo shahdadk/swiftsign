@@ -6,10 +6,13 @@ import { Logo } from '@/components/landing/icons'
 
 type NavItem = { href: string; label: string }
 
+// Primary nav. Webhooks intentionally removed — they live under
+// /dashboard/settings → Advanced for the rare developer-user who builds
+// automation around SwiftSign event callbacks. Most operators never need
+// to think about them.
 const baseItems: NavItem[] = [
   { href: '/dashboard', label: 'Envelopes' },
   { href: '/dashboard/settings', label: 'API key' },
-  { href: '/dashboard/webhooks', label: 'Webhooks' },
 ]
 
 export function DashboardNav({
@@ -23,22 +26,18 @@ export function DashboardNav({
 }) {
   const pathname = usePathname()
   const items: NavItem[] = billingEnabled
-    ? [
-        baseItems[0],
-        baseItems[1],
-        { href: '/dashboard/billing', label: 'Billing' },
-        baseItems[2],
-      ]
+    ? [baseItems[0], baseItems[1], { href: '/dashboard/billing', label: 'Billing' }]
     : baseItems
+
   return (
-    <header className="bg-white border-b border-gray-200">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-6">
-        <Link href="/dashboard" className="flex items-center gap-2 text-gray-900">
+    <header className="nav nav-scrolled" style={{ position: 'relative' }}>
+      <div className="nav-inner">
+        <Link href="/dashboard" className="nav-logo">
           <Logo size={22} />
-          <span className="font-semibold text-sm">SwiftSign</span>
+          <span className="mono">swiftsign</span>
         </Link>
 
-        <nav className="flex items-center gap-1 ml-4">
+        <nav className="nav-links">
           {items.map((it) => {
             const active =
               it.href === '/dashboard'
@@ -48,11 +47,16 @@ export function DashboardNav({
               <Link
                 key={it.href}
                 href={it.href}
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  active
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
+                className={'nav-link' + (active ? ' active' : '')}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 13,
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  color: active ? 'var(--ink)' : 'var(--ink-3)',
+                  background: active ? 'var(--surface-2)' : 'transparent',
+                  transition: 'color 120ms, background 120ms',
+                }}
               >
                 {it.label}
               </Link>
@@ -60,25 +64,43 @@ export function DashboardNav({
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">
-          {billingEnabled ? (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-              {userPlan}
-            </span>
-          ) : (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-              Beta
-            </span>
-          )}
-          <span className="text-sm text-gray-500 hidden sm:inline">
-            {userEmail}
+        <div
+          className="nav-cta"
+          style={{ marginLeft: 'auto', alignItems: 'center', gap: 12 }}
+        >
+          <span
+            className="mono"
+            style={{
+              fontSize: 11,
+              padding: '3px 9px',
+              borderRadius: 999,
+              border: '1px solid var(--line)',
+              background: billingEnabled ? 'var(--surface-2)' : 'var(--accent-soft)',
+              color: billingEnabled ? 'var(--ink-3)' : 'var(--accent)',
+              letterSpacing: '0.02em',
+            }}
+          >
+            {billingEnabled ? userPlan.toLowerCase() : 'beta'}
           </span>
-          <form action="/api/auth/logout" method="post">
+          <span
+            className="mono nav-dim"
+            style={{ fontSize: 12 }}
+          >
+            <span className="hidden-sm">{userEmail}</span>
+          </span>
+          <form action="/api/auth/logout" method="post" style={{ margin: 0 }}>
             <button
               type="submit"
-              className="text-sm text-gray-500 hover:text-gray-800"
+              className="mono"
+              style={{
+                background: 'transparent',
+                border: 0,
+                color: 'var(--ink-4)',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
             >
-              Logout
+              sign out
             </button>
           </form>
         </div>

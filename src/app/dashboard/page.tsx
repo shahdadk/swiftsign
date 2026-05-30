@@ -6,22 +6,15 @@ import { checkQuota } from '@/lib/quota';
 import { env } from '@/lib/env';
 import { InstallCard } from '@/components/landing/install-card';
 import { CopyButton } from '@/components/copy-button';
+import { ActivityFeed } from './activity-feed';
 
-// Status pill colors. Match the landing page's understated palette rather
-// than fighting it with bright Tailwind defaults.
-const STATUS_STYLES: Record<string, string> = {
-  DRAFT: 'bg-gray-50 text-gray-600 border-gray-200',
-  SENT: 'bg-blue-50 text-blue-700 border-blue-100',
-  COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-  DECLINED: 'bg-red-50 text-red-700 border-red-100',
-  VOIDED: 'bg-amber-50 text-amber-700 border-amber-100',
-};
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const user = await getSession();
   if (!user) redirect('/dashboard/login');
 
-  const [envelopes, quota, apiKeys] = await Promise.all([
+  const [envelopes, quota, apiKeys, activityRows] = await Promise.all([
     prisma.envelope.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
@@ -39,10 +32,22 @@ export default async function DashboardPage() {
       where: { userId: user.id },
       orderBy: { createdAt: 'asc' },
     }),
+    prisma.auditLog.findMany({
+      where: { envelope: { userId: user.id } },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+      select: {
+        id: true,
+        event: true,
+        envelopeId: true,
+        actorName: true,
+        actorEmail: true,
+        createdAt: true,
+        envelope: { select: { subject: true } },
+      },
+    }),
   ]);
 
-  // Display-only key hint. Secrets are never stored in plaintext; the prefix
-  // is enough to identify which key is in flight from another shell.
   const hintKey = apiKeys.find((k) => k.mode === 'TEST') ?? apiKeys[0];
   const keyHint = hintKey ? `${hintKey.prefix}…` : null;
 
@@ -50,16 +55,29 @@ export default async function DashboardPage() {
   const usagePct = showQuotaBar
     ? Math.min(100, Math.round((quota.used / (quota.limit as number)) * 100))
     : 0;
+  const quotaTone = usagePct >= 100 ? 'over' : usagePct >= 80 ? 'warn' : '';
 
-  // Counts for the hero summary row.
   const counts = {
     pending: envelopes.filter((e) => e.status === 'SENT').length,
     completed: envelopes.filter((e) => e.status === 'COMPLETED').length,
     draft: envelopes.filter((e) => e.status === 'DRAFT').length,
   };
 
-  // Pre-build the curl example so the CopyButton can drop the full string in
-  // one click rather than the user fighting whitespace from a <pre>.
+  // Initial server-side payload for the activity feed; client polls from here.
+  const initialActivity = activityRows.map((r) => ({
+    id: r.id,
+    event: r.event,
+    envelopeId: r.envelopeId,
+    envelopeSubject: r.envelope.subject,
+    actorName: r.actorName,
+    actorEmail: r.actorEmail,
+    createdAt: r.createdAt.toISOString(),
+  }));
+
+  // The "send your first contract" chat prompt — the canonical AI-first
+  // setup affordance. Shown in Step 2 of the hero pane.
+  const firstPrompt = `Send the NDA at ~/contracts/mutual-nda.pdf to legal@acme.com for signature. Put the signature at the bottom of the last page.`;
+
   const curlExample = `curl -X POST ${env.NEXT_PUBLIC_APP_URL}/api/v1/envelopes \\
   -H "Authorization: Bearer ${keyHint ?? 'sk_test_...'}" \\
   -H "Content-Type: application/json" \\
@@ -72,9 +90,10 @@ export default async function DashboardPage() {
 
   return (
     <main>
-      {/* Hero — npx install front and center, mirrors the landing page so
-          the dashboard feels like the same product, not a separate admin app. */}
-      <section className="hero" style={{ padding: '64px 0 40px' }}>
+      {/* Hero — matches the landing's hero structure so the two pages
+          read as one product. Operator gets a kicker with their email,
+          a two-step setup pane, and a counts row. */}
+      <section className="hero" style={{ padding: '64px 0 56px' }}>
         <div className="dotgrid" />
         <div className="blob blob-a" style={{ top: '-200px', left: '-120px' }} />
         <div className="blob blob-b" style={{ top: '-80px', right: '-160px' }} />
@@ -82,221 +101,158 @@ export default async function DashboardPage() {
         <div className="container hero-inner" style={{ textAlign: 'left', alignItems: 'flex-start' }}>
           <div className="kicker">
             <span className="dot" />
-            <span>Signed in as {user.email}</span>
+            <span>
+              Signed in as {user.email} · plan: {user.plan?.toLowerCase() ?? 'free'}
+            </span>
           </div>
 
           <h1 className="hero-h1" style={{ fontSize: 'clamp(36px, 5vw, 56px)' }}>
-            Send contracts
+            Your envelopes,
             <br />
-            <span className="hero-accent">from your terminal.</span>
+            <span className="hero-accent">from the terminal.</span>
           </h1>
 
-          <div className="hero-install" style={{ width: '100%', maxWidth: 720 }}>
-            <InstallCard />
+          {/* Two-step setup. The InstallCard handles Step 1's copy button;
+              Step 2 (the chat prompt) gets its own dark block + CopyButton. */}
+          <div className="dash-setup">
+            <div>
+              <div className="dash-setup-label">
+                <span className="num">1</span> Paste this in your terminal once
+              </div>
+              <InstallCard />
+            </div>
+            <div>
+              <div className="dash-setup-label">
+                <span className="num">2</span> Then say this to Claude Code
+              </div>
+              <div className="dash-setup-prompt">
+                {firstPrompt}
+                <span className="copy">
+                  <CopyButton value={firstPrompt} variant="inline" label="copy" />
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* At-a-glance counts. Quick visual answer to "how many envelopes
-              are pending in my account" without a deep dive. */}
-          <div
-            className="hero-trust mono"
-            style={{ marginTop: 24, display: 'flex', gap: 28, flexWrap: 'wrap' }}
-          >
-            <Link href="#envelopes" style={{ color: 'inherit' }}>
-              <span style={{ fontWeight: 600 }}>{counts.pending}</span> pending
+          {/* At-a-glance counts. Anchors to #envelopes section below. */}
+          <div className="dash-stats">
+            <Link href="#envelopes">
+              <span className="dash-stats-num">{counts.pending}</span>
+              <span className="dash-stats-label">pending</span>
             </Link>
-            <span className="sep">·</span>
-            <Link href="#envelopes" style={{ color: 'inherit' }}>
-              <span style={{ fontWeight: 600 }}>{counts.completed}</span> completed
+            <Link href="#envelopes">
+              <span className="dash-stats-num">{counts.completed}</span>
+              <span className="dash-stats-label">completed</span>
             </Link>
-            <span className="sep">·</span>
-            <Link href="#envelopes" style={{ color: 'inherit' }}>
-              <span style={{ fontWeight: 600 }}>{counts.draft}</span> draft
+            <Link href="#envelopes">
+              <span className="dash-stats-num">{counts.draft}</span>
+              <span className="dash-stats-label">draft</span>
             </Link>
           </div>
         </div>
       </section>
 
-      <div className="container" style={{ paddingBottom: 80 }}>
-        {/* API key reveal — single-click copy, no manual selection. */}
-        <div
-          className="rounded-2xl p-5 mb-6"
-          style={{
-            background: 'rgba(255,255,255,0.7)',
-            border: '1px solid var(--line)',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <p className="eyebrow" style={{ marginBottom: 4 }}>
-                API key
-              </p>
-              {keyHint ? (
-                <p className="mono text-sm" style={{ color: 'var(--ink-2)' }}>
-                  {keyHint}{' '}
-                  <Link href="/dashboard/settings" style={{ color: 'var(--accent)' }}>
-                    reveal full key →
-                  </Link>
-                </p>
-              ) : (
-                <p className="text-sm" style={{ color: 'var(--ink-3)' }}>
-                  No keys yet —{' '}
-                  <Link href="/dashboard/settings" style={{ color: 'var(--accent)' }}>
-                    create one in Settings →
-                  </Link>
-                </p>
-              )}
-            </div>
-            {keyHint && <CopyButton value={keyHint} variant="inline" label="copy prefix" />}
+      <div className="container">
+        {/* Live activity feed — the AI-first surface. Renders agent
+            tool calls + webhook events as terminal lines, polled 5s. */}
+        <section className="dash-section">
+          <div className="section-head">
+            <div className="eyebrow">Activity</div>
+            <h2>Live · your agents at work</h2>
           </div>
-        </div>
+          <ActivityFeed initial={initialActivity} />
+        </section>
 
-        {/* Curl quickstart — also has a copy button so users don't have to
-            scrub triple-clicks across a multiline <pre>. */}
-        <div
-          className="rounded-2xl p-5 mb-8"
-          style={{ background: 'var(--ink)', color: '#e8eaed' }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <p className="eyebrow mono" style={{ color: '#8a9099' }}>
-              Send an envelope via cURL
-            </p>
-            <CopyButton
-              value={curlExample}
-              className="text-gray-300 hover:text-white"
-              label="copy"
-            />
+        {/* Quick-action cards — landing's .dev-card pattern. Two cards:
+            another Claude Code prompt + the cURL example for developers. */}
+        <section className="dash-section">
+          <div className="section-head">
+            <div className="eyebrow">Send another</div>
+            <h2>Two ways to send</h2>
           </div>
-          <pre
-            className="mono text-xs"
-            style={{
-              overflowX: 'auto',
-              whiteSpace: 'pre',
-              margin: 0,
-              lineHeight: 1.6,
-            }}
-          >
-            {curlExample}
-          </pre>
-        </div>
-
-        {/* Quota bar — minimal, doesn't fight for attention with the hero. */}
-        {showQuotaBar && (
-          <div
-            className="rounded-2xl p-4 mb-8"
-            style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid var(--line)' }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm mono" style={{ color: 'var(--ink-2)' }}>
-                {quota.used} / {quota.limit} envelopes this month
-              </p>
-              <Link
-                href="/dashboard/billing"
-                className="text-sm"
-                style={{ color: 'var(--accent)' }}
-              >
-                Upgrade
-              </Link>
+          <div className="devgrid-cards">
+            <div className="dev-card">
+              <div className="dev-card-head">
+                <span className="dev-card-icon" aria-hidden>
+                  ⌘
+                </span>
+                <span className="dev-card-kicker mono">Claude Code</span>
+              </div>
+              <h3>Via chat</h3>
+              <pre className="dev-card-code mono" style={{ position: 'relative' }}>
+                <code>
+                  {`> "Send the renewal MSA at ~/contracts/msa.pdf to billing@vendor.com.
+   Signature at the bottom, date next to it."`}
+                </code>
+                <span style={{ position: 'absolute', top: 12, right: 12 }}>
+                  <CopyButton
+                    value={`Send the renewal MSA at ~/contracts/msa.pdf to billing@vendor.com. Signature at the bottom, date next to it.`}
+                    variant="inline"
+                  />
+                </span>
+              </pre>
             </div>
-            <div
-              className="h-1.5 rounded-full overflow-hidden"
-              style={{ background: 'var(--line)' }}
-            >
-              <div
-                className="h-full transition-all"
-                style={{
-                  width: `${usagePct}%`,
-                  background:
-                    usagePct >= 100
-                      ? '#ef4444'
-                      : usagePct >= 80
-                        ? '#f59e0b'
-                        : 'var(--accent)',
-                }}
-              />
+
+            <div className="dev-card">
+              <div className="dev-card-head">
+                <span className="dev-card-icon" aria-hidden>
+                  $
+                </span>
+                <span className="dev-card-kicker mono">cURL</span>
+              </div>
+              <h3>Via API</h3>
+              <pre className="dev-card-code mono" style={{ position: 'relative' }}>
+                <code>{curlExample}</code>
+                <span style={{ position: 'absolute', top: 12, right: 12 }}>
+                  <CopyButton value={curlExample} variant="inline" />
+                </span>
+              </pre>
             </div>
           </div>
-        )}
+        </section>
 
-        {/* Envelopes list. Each row is its own clickable card; download +
-            recipient detail land on the right so the action is visible
-            without entering the detail page. */}
-        <section id="envelopes">
-          <div className="flex items-baseline justify-between mb-4">
-            <h2 className="text-xl font-semibold" style={{ color: 'var(--ink)' }}>
-              Envelopes
-            </h2>
-            <span className="mono text-xs" style={{ color: 'var(--ink-4)' }}>
-              {envelopes.length} total
-            </span>
+        {/* Envelopes section — main data view. Each row is an .env-card. */}
+        <section className="dash-section" id="envelopes">
+          <div className="section-head">
+            <div className="eyebrow">Envelopes</div>
+            <h2>{envelopes.length === 0 ? 'Nothing yet' : `${envelopes.length} total`}</h2>
           </div>
 
           {envelopes.length === 0 ? (
-            <div
-              className="rounded-2xl text-center py-12"
-              style={{
-                border: '1px dashed var(--line)',
-                color: 'var(--ink-4)',
-              }}
-            >
-              <p className="mono text-sm">No envelopes yet.</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--ink-4)' }}>
-                Send your first one with the cURL example above, or via the MCP server.
-              </p>
+            <div className="env-empty">
+              <div># no envelopes yet</div>
+              <div style={{ marginTop: 6 }}>
+                <span>send one with Claude Code using the prompt above.</span>
+              </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="env-grid">
               {envelopes.map((envelope) => {
                 const signedCount = envelope.recipients.filter((r) => r.status === 'SIGNED').length;
                 const signerCount = envelope.recipients.filter((r) => r.role === 'SIGNER').length;
                 const isComplete = envelope.status === 'COMPLETED';
                 const firstSignedDoc = envelope.documents.find((d) => d.signedKey);
+                const statusClass = envelope.status.toLowerCase();
 
                 return (
-                  <div
-                    key={envelope.id}
-                    className="rounded-2xl p-5 transition-all"
-                    style={{
-                      background: '#ffffff',
-                      border: '1px solid var(--line)',
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-4 mb-3">
-                      <Link
-                        href={`/dashboard/${envelope.id}`}
-                        className="flex-1 min-w-0"
-                        style={{ color: 'inherit' }}
-                      >
-                        <h3 className="font-semibold truncate" style={{ color: 'var(--ink)' }}>
-                          {envelope.subject}
-                        </h3>
-                        <p
-                          className="mono text-xs truncate mt-1"
-                          style={{ color: 'var(--ink-4)' }}
-                        >
+                  <div key={envelope.id} className="env-card">
+                    <div className="env-card-head">
+                      <Link href={`/dashboard/${envelope.id}`} className="env-card-title">
+                        <h3>{envelope.subject}</h3>
+                        <p className="env-card-docs">
                           {envelope.documents.map((d) => d.name).join(' · ')}
                         </p>
                       </Link>
-                      <span
-                        className={`mono text-xs font-medium px-2.5 py-1 rounded-full border ${
-                          STATUS_STYLES[envelope.status] || STATUS_STYLES.DRAFT
-                        }`}
-                        style={{ flexShrink: 0 }}
-                      >
-                        {envelope.status.toLowerCase()}
-                      </span>
+                      <span className={`env-status ${statusClass}`}>{statusClass}</span>
                     </div>
 
-                    <div
-                      className="flex items-center justify-between gap-4 flex-wrap"
-                      style={{ color: 'var(--ink-3)' }}
-                    >
-                      <div className="flex items-center gap-2 flex-wrap mono text-xs">
+                    <div className="env-card-row">
+                      <div className="env-card-meta">
                         <span>
                           {signedCount}/{signerCount} signed
                         </span>
-                        <span style={{ color: 'var(--ink-4)' }}>·</span>
-                        <span style={{ color: 'var(--ink-4)' }}>
+                        <span className="sep">·</span>
+                        <span>
                           {new Date(envelope.createdAt).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -305,18 +261,11 @@ export default async function DashboardPage() {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        {/* Download is visible only for completed envelopes —
-                            sealed PDFs don't exist before that. */}
+                      <div className="env-card-actions">
                         {isComplete && firstSignedDoc && (
                           <a
                             href={`/api/envelopes/${envelope.id}/download`}
-                            className="mono text-xs px-3 py-1.5 rounded-lg border transition-colors"
-                            style={{
-                              borderColor: 'var(--line)',
-                              color: 'var(--ink-2)',
-                              background: '#ffffff',
-                            }}
+                            className="btn-link"
                           >
                             ↓ signed PDF
                           </a>
@@ -324,52 +273,39 @@ export default async function DashboardPage() {
                         {isComplete && (
                           <a
                             href={`/api/envelopes/${envelope.id}/download?certificate=true`}
-                            className="mono text-xs px-3 py-1.5 rounded-lg border transition-colors"
-                            style={{
-                              borderColor: 'var(--line)',
-                              color: 'var(--ink-2)',
-                              background: '#ffffff',
-                            }}
+                            className="btn-link"
                           >
                             ↓ certificate
                           </a>
                         )}
                         <Link
                           href={`/dashboard/${envelope.id}`}
-                          className="mono text-xs px-3 py-1.5 rounded-lg"
-                          style={{ color: 'var(--accent)' }}
+                          className="btn-link btn-link-primary"
                         >
                           open →
                         </Link>
                       </div>
                     </div>
 
-                    {/* Recipient chips. Names only, signed status visible via color. */}
                     {envelope.recipients.length > 0 && (
-                      <div className="flex gap-2 mt-3 flex-wrap">
-                        {envelope.recipients.map((r) => (
-                          <span
-                            key={r.email}
-                            className="mono text-xs px-2 py-0.5 rounded-full"
-                            style={{
-                              background:
-                                r.status === 'SIGNED'
-                                  ? 'rgba(16, 185, 129, 0.08)'
-                                  : r.status === 'DECLINED'
-                                    ? 'rgba(239, 68, 68, 0.08)'
-                                    : 'rgba(0,0,0,0.04)',
-                              color:
-                                r.status === 'SIGNED'
-                                  ? '#047857'
-                                  : r.status === 'DECLINED'
-                                    ? '#b91c1c'
-                                    : 'var(--ink-3)',
-                            }}
-                            title={`${r.email} — ${r.status.toLowerCase()}`}
-                          >
-                            {r.name}
-                          </span>
-                        ))}
+                      <div className="env-chips">
+                        {envelope.recipients.map((r) => {
+                          const chipClass =
+                            r.status === 'SIGNED'
+                              ? 'env-chip env-chip-signed'
+                              : r.status === 'DECLINED'
+                                ? 'env-chip env-chip-declined'
+                                : 'env-chip';
+                          return (
+                            <span
+                              key={r.email}
+                              className={chipClass}
+                              title={`${r.email} — ${r.status.toLowerCase()}`}
+                            >
+                              {r.name}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -378,6 +314,25 @@ export default async function DashboardPage() {
             </div>
           )}
         </section>
+
+        {/* Quota — lowest emphasis. Only shown if not on unlimited. */}
+        {showQuotaBar && (
+          <div className="quota-strip">
+            <div className="quota-strip-row">
+              <span>
+                {quota.used} / {quota.limit} envelopes this month
+              </span>
+              <Link href="/dashboard/billing" style={{ color: 'var(--accent)' }}>
+                Upgrade
+              </Link>
+            </div>
+            <div className={`quota-bar ${quotaTone}`}>
+              <div style={{ width: `${usagePct}%` }} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ height: 80 }} />
       </div>
     </main>
   );
