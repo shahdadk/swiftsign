@@ -8,7 +8,11 @@
 import fs from 'node:fs/promises'
 
 const API_URL = 'https://swiftsign.ca'
-const API_KEY = process.env.SWIFTSIGN_API_KEY ?? 'sk_live_shahdad_swiftsign_2026'
+const API_KEY = process.env.SWIFTSIGN_API_KEY
+if (!API_KEY) {
+  console.error('SWIFTSIGN_API_KEY env var is required')
+  process.exit(1)
+}
 
 const PDF_PATH =
   '/Users/shahdad/Downloads/Appfi_ItemIQ_Subcontractor_Agreement.docx.pdf'

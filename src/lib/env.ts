@@ -69,7 +69,16 @@ const stub: ServerEnv = {
 }
 
 function loadEnv(): ServerEnv {
-  if (process.env.SKIP_ENV_VALIDATION === '1') return stub
+  // The stub bypass exists for builds and local/CI runs where real secrets are
+  // absent. A real PRODUCTION RUNTIME must never run on stubs: if a request is
+  // served in production, validate and fail fast on any missing/malformed
+  // secret. We allow the bypass only during the Next build phase (no requests
+  // are served) or in explicit non-production runs.
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build'
+  const isProd = process.env.NODE_ENV === 'production'
+  if (process.env.SKIP_ENV_VALIDATION === '1' && (isBuildPhase || !isProd)) {
+    return stub
+  }
 
   const parsed = ServerSchema.safeParse(process.env)
   if (!parsed.success) {
@@ -78,7 +87,8 @@ function loadEnv(): ServerEnv {
       .join('\n')
     throw new Error(
       `Invalid environment configuration:\n${issues}\n\n` +
-        `Set SKIP_ENV_VALIDATION=1 to bypass (CI/build only).`
+        `SKIP_ENV_VALIDATION=1 is honored only during builds and non-production ` +
+        `runs; a production runtime always validates.`
     )
   }
   return parsed.data

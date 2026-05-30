@@ -258,3 +258,20 @@ enum AuditEvent {
   SUBSCRIPTION_UPDATED
   QUOTA_EXCEEDED
 }
+
+// Stores the response for an Idempotency-Key so POST replays return the same
+// result. Unique on (userId, key); a key reused with a different body is
+// rejected (422). Rows expire after 24h (pruned by the billing-sweep cron).
+model IdempotencyKey {
+  id             String   @id @default(cuid())
+  userId         String
+  key            String
+  bodyHash       String
+  responseStatus Int?
+  responseBody   Json?
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+}
