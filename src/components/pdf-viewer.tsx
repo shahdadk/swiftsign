@@ -16,7 +16,10 @@ type FieldType =
   | "DATE"
   | "TEXT"
   | "INITIALS"
-  | "CHECKBOX";
+  | "CHECKBOX"
+  | "RADIO"
+  | "DROPDOWN"
+  | "ATTACHMENT";
 
 interface FieldOverlay {
   id: string;
@@ -28,6 +31,7 @@ interface FieldOverlay {
   height: number;
   value: string | null;
   required: boolean;
+  options?: string[] | null;
 }
 
 interface PdfViewerProps {
@@ -47,6 +51,9 @@ const FIELD_LABELS: Record<FieldType, string> = {
   DATE: "Date",
   TEXT: "Text",
   CHECKBOX: "Check",
+  RADIO: "Choose one",
+  DROPDOWN: "Select",
+  ATTACHMENT: "Attach file",
 };
 
 export function PdfViewer({
@@ -117,6 +124,7 @@ export function PdfViewer({
                   const isImageField =
                     field.type === "SIGNATURE" || field.type === "INITIALS";
                   const isInlineText = field.type === "TEXT";
+                  const opts = field.options ?? [];
 
                   // Inline editable text input — renders on top of the field.
                   // Solid white bg so the underlying placeholder text in the
@@ -149,6 +157,135 @@ export function PdfViewer({
                           }
                           className="w-full h-full bg-transparent px-1.5 text-xs sm:text-sm text-gray-900 font-medium placeholder:text-amber-700/70 placeholder:font-medium focus:outline-none"
                         />
+                      </div>
+                    );
+                  }
+
+                  // Dropdown — native <select> over the field's options. The
+                  // selected option string is the field value.
+                  if (field.type === "DROPDOWN") {
+                    return (
+                      <div
+                        key={field.id}
+                        className={`absolute z-10 rounded-sm transition-all bg-white ${
+                          isFilled
+                            ? "border border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.15)]"
+                            : "border border-amber-400 shadow-[0_0_0_2px_rgba(245,158,11,0.15)]"
+                        } ${isActive ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
+                        style={{
+                          left: `${field.x}%`,
+                          top: `${field.y}%`,
+                          width: `${field.width}%`,
+                          height: `${field.height}%`,
+                          minHeight: 22,
+                        }}
+                      >
+                        <select
+                          value={field.value ?? ""}
+                          onFocus={() => onFieldClick(field.id)}
+                          onChange={(e) =>
+                            onTextFieldChange(field.id, e.target.value)
+                          }
+                          className="w-full h-full bg-transparent px-1 text-xs sm:text-sm text-gray-900 font-medium focus:outline-none"
+                        >
+                          <option value="" disabled>
+                            {FIELD_LABELS.DROPDOWN}
+                            {field.required ? " *" : ""}
+                          </option>
+                          {opts.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  }
+
+                  // Radio — a vertical group of options. Selecting one sets the
+                  // field value to that option string.
+                  if (field.type === "RADIO") {
+                    return (
+                      <div
+                        key={field.id}
+                        className={`absolute z-10 rounded-sm transition-all bg-white/95 overflow-auto ${
+                          isFilled
+                            ? "border border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.15)]"
+                            : "border border-amber-400 shadow-[0_0_0_2px_rgba(245,158,11,0.15)]"
+                        } ${isActive ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
+                        style={{
+                          left: `${field.x}%`,
+                          top: `${field.y}%`,
+                          width: `${field.width}%`,
+                          height: `${field.height}%`,
+                          minHeight: 22,
+                        }}
+                      >
+                        <div className="flex flex-col gap-0.5 px-1.5 py-1">
+                          {opts.map((opt) => (
+                            <label
+                              key={opt}
+                              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-900 font-medium cursor-pointer"
+                            >
+                              <input
+                                type="radio"
+                                name={`radio-${field.id}`}
+                                checked={field.value === opt}
+                                onFocus={() => onFieldClick(field.id)}
+                                onChange={() =>
+                                  onTextFieldChange(field.id, opt)
+                                }
+                                className="accent-primary"
+                              />
+                              <span className="truncate">{opt}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Attachment — file picker that captures the chosen file's
+                  // name as the field value (the sealed PDF annotates it; no
+                  // inline embedding of the binary).
+                  if (field.type === "ATTACHMENT") {
+                    return (
+                      <div
+                        key={field.id}
+                        className={`absolute z-10 rounded-sm transition-all bg-white flex items-center px-1.5 ${
+                          isFilled
+                            ? "border border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.15)]"
+                            : "border border-amber-400 shadow-[0_0_0_2px_rgba(245,158,11,0.15)]"
+                        } ${isActive ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
+                        style={{
+                          left: `${field.x}%`,
+                          top: `${field.y}%`,
+                          width: `${field.width}%`,
+                          height: `${field.height}%`,
+                          minHeight: 22,
+                        }}
+                      >
+                        {isFilled ? (
+                          <span className="text-[10px] sm:text-xs text-gray-900 font-medium truncate w-full">
+                            📎 {field.value}
+                          </span>
+                        ) : (
+                          <label className="text-[10px] sm:text-xs text-amber-700 font-medium cursor-pointer truncate w-full">
+                            {FIELD_LABELS.ATTACHMENT}
+                            {field.required ? " *" : ""}
+                            <input
+                              type="file"
+                              className="sr-only"
+                              onFocus={() => onFieldClick(field.id)}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  onTextFieldChange(field.id, file.name);
+                                }
+                              }}
+                            />
+                          </label>
+                        )}
                       </div>
                     );
                   }

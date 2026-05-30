@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib'
 import { createHash } from 'crypto'
 
 export interface SealField {
@@ -16,16 +16,30 @@ export interface SealResult {
   documentHash: string
 }
 
+export interface SealOptions {
+  /**
+   * When true, draws a diagonal light-gray "TEST — NOT LEGALLY BINDING"
+   * watermark across every page. Used for sandbox (test-mode) envelopes so a
+   * sealed copy can never be mistaken for a binding document. Default false.
+   */
+  watermark?: boolean
+}
+
 /**
  * Seals a PDF by inserting all field values (signatures, text, dates, etc.)
  * and computing a SHA-256 integrity hash.
  *
  * Field coordinates are percentage-based (0-100) relative to the page.
  * pdf-lib uses bottom-left origin, so Y is flipped.
+ *
+ * The optional `opts.watermark` flag stamps a "TEST — NOT LEGALLY BINDING"
+ * watermark on every page; it defaults to off so existing 2-arg callers are
+ * unaffected.
  */
 export async function sealDocument(
   originalPdf: Buffer,
-  fields: SealField[]
+  fields: SealField[],
+  opts?: SealOptions
 ): Promise<SealResult> {
   const pdfDoc = await PDFDocument.load(originalPdf)
   const pages = pdfDoc.getPages()
@@ -114,8 +128,10 @@ export async function sealDocument(
           color: rgb(0, 0, 0),
         })
       }
-    } else if (['NAME', 'DATE', 'TEXT'].includes(field.type)) {
-      // Text fields. First draw a white rect to redact any underlying text
+    } else if (['NAME', 'DATE', 'TEXT', 'RADIO', 'DROPDOWN'].includes(field.type)) {
+      // Text-style fields. RADIO and DROPDOWN bake the SELECTED option string
+      // into the box exactly like a TEXT value. First draw a white rect to
+      // redact any underlying text
       // (e.g. "[CLIENT LEGAL NAME]" placeholder), then draw the value on top.
       // This means inline placeholders in paragraphs get cleanly replaced
       // instead of having both the original bracket text AND the typed value
@@ -170,6 +186,60 @@ export async function sealDocument(
           color: rgb(0, 0, 0),
         })
       }
+    } else if (field.type === 'ATTACHMENT') {
+      // We don't embed the uploaded file inline \u2014 just annotate the box with a
+      // "Attachment: <value>" label (value is a filename or a short note) so
+      // the sealed PDF records that something was attached.
+      const boxBottomY = pageHeight - absY - absHeight
+      const label = `Attachment: ${field.value}`
+      const innerWidth = absWidth - 4
+
+      let fontSize = Math.min(10, absHeight * 0.6)
+      const minFontSize = 5
+      while (
+        fontSize > minFontSize &&
+        helvetica.widthOfTextAtSize(label, fontSize) > innerWidth
+      ) {
+        fontSize -= 0.5
+      }
+
+      const baselineY = boxBottomY + fontSize * 0.2
+      page.drawText(label, {
+        x: absX + 2,
+        y: baselineY,
+        size: fontSize,
+        font: helvetica,
+        color: rgb(0.25, 0.25, 0.25),
+      })
+    }
+  }
+
+  // Optional sandbox watermark: a large, diagonal, semi-transparent label on
+  // every page so a test-mode sealed PDF can't be mistaken for a binding one.
+  if (opts?.watermark) {
+    const text = 'TEST \u2014 NOT LEGALLY BINDING'
+    for (const page of pages) {
+      const pageWidth = page.getWidth()
+      const pageHeight = page.getHeight()
+      // Size the text to span roughly the page diagonal.
+      const fontSize = Math.min(pageWidth, pageHeight) * 0.08
+      const textWidth = helveticaBold.widthOfTextAtSize(text, fontSize)
+      // Center the rotated text: start point is offset so the ~45deg baseline
+      // crosses through the page middle.
+      const cx = pageWidth / 2
+      const cy = pageHeight / 2
+      const rad = (45 * Math.PI) / 180
+      const x = cx - (textWidth / 2) * Math.cos(rad)
+      const y = cy - (textWidth / 2) * Math.sin(rad)
+      page.drawText(text, {
+        x,
+        y,
+        size: fontSize,
+        font: helveticaBold,
+        color: rgb(0.6, 0.6, 0.6),
+        rotate: degrees(45),
+        opacity: 0.3,
+      })
     }
   }
 

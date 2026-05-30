@@ -31,6 +31,7 @@ model User {
   webhookEndpoints WebhookEndpoint[]
   apiKeys          ApiKey[]
   invoices         Invoice[]
+  templates        Template[]
 }
 
 model Subscription {
@@ -139,12 +140,16 @@ model Envelope {
   subject     String
   message     String?
   status      EnvelopeStatus @default(DRAFT)
+  livemode    Boolean        @default(true)
   documents   Document[]
   recipients  Recipient[]
   auditLogs   AuditLog[]
   completedAt DateTime?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([userId, livemode, createdAt])
 }
 
 model Document {
@@ -179,6 +184,7 @@ model Recipient {
   viewedAt       DateTime?
   fields         Field[]
   consentRecords ConsentRecord[]
+  embeddedSessions EmbeddedSession[]
 }
 
 model Field {
@@ -195,6 +201,7 @@ model Field {
   height      Float     @default(40)
   value       String?
   required    Boolean   @default(true)
+  options     Json?
 }
 
 model AuditLog {
@@ -247,6 +254,9 @@ enum FieldType {
   TEXT
   INITIALS
   CHECKBOX
+  RADIO
+  DROPDOWN
+  ATTACHMENT
 }
 
 model SignatureAdoption {
@@ -371,6 +381,80 @@ model ConsentRecord {
   acceptedAt        DateTime          @default(now())
   ipAddress         String
   userAgent         String
+
+  @@index([recipientId])
+}
+
+// Reusable envelope blueprint: documents (uploaded + rendered once) + recipient
+// roles + field layout. send-by-template substitutes roles -> concrete signers.
+model Template {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  documents   TemplateDocument[]
+  roles       TemplateRole[]
+  fields      TemplateField[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model TemplateDocument {
+  id          String          @id @default(cuid())
+  templateId  String
+  template    Template        @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  name        String
+  originalKey String
+  pageCount   Int             @default(0)
+  imageKeys   Json?
+  order       Int             @default(0)
+  fields      TemplateField[]
+}
+
+model TemplateRole {
+  id            String          @id @default(cuid())
+  templateId    String
+  template      Template        @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  roleName      String
+  routingOrder  Int             @default(1)
+  recipientType RecipientRole   @default(SIGNER)
+  order         Int             @default(0)
+  fields        TemplateField[]
+}
+
+model TemplateField {
+  id                 String           @id @default(cuid())
+  templateId         String
+  template           Template         @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateDocumentId String
+  document           TemplateDocument @relation(fields: [templateDocumentId], references: [id], onDelete: Cascade)
+  templateRoleId     String
+  role               TemplateRole     @relation(fields: [templateRoleId], references: [id], onDelete: Cascade)
+  type               FieldType
+  page               Int
+  x                  Float
+  y                  Float
+  width              Float            @default(30)
+  height             Float            @default(5)
+  anchor             String?
+  required           Boolean          @default(true)
+  options            Json?
+}
+
+// Short-lived single-use entry ticket for embedded signing (drops a developer's
+// own end-user straight into the signer UI without the email round-trip).
+model EmbeddedSession {
+  id          String    @id @default(cuid())
+  recipientId String
+  recipient   Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  token       String    @unique
+  returnUrl   String?
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
 
   @@index([recipientId])
 }

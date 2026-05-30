@@ -6,7 +6,16 @@ import { PdfViewer } from "./pdf-viewer";
 import { SignatureModal } from "./signature-modal";
 import { Logo } from "./landing/icons";
 
-type FieldType = "SIGNATURE" | "NAME" | "DATE" | "TEXT" | "INITIALS" | "CHECKBOX";
+type FieldType =
+  | "SIGNATURE"
+  | "NAME"
+  | "DATE"
+  | "TEXT"
+  | "INITIALS"
+  | "CHECKBOX"
+  | "RADIO"
+  | "DROPDOWN"
+  | "ATTACHMENT";
 
 interface FieldData {
   id: string;
@@ -19,6 +28,7 @@ interface FieldData {
   value: string | null;
   required: boolean;
   documentId: string;
+  options?: string[] | null;
 }
 
 interface SigningFormProps {
@@ -52,6 +62,11 @@ interface SigningFormProps {
   } | null;
   savedSignature?: string;
   savedInitials?: string;
+  // Embedded (iframe) signing. When true, the completion step posts a
+  // `swiftsign:completed` message to the parent frame and (if a returnUrl was
+  // provided) redirects there.
+  embedded?: boolean;
+  returnUrl?: string;
 }
 
 type Step = "CONSENT" | "SIGNING" | "SUBMITTING" | "COMPLETE";
@@ -67,6 +82,8 @@ export function SigningForm({
   disclosure,
   savedSignature,
   savedInitials,
+  embedded = false,
+  returnUrl,
 }: SigningFormProps) {
   const [step, setStep] = useState<Step>(needsConsent ? "CONSENT" : "SIGNING");
   const [consenting, setConsenting] = useState(false);
@@ -215,7 +232,11 @@ export function SigningForm({
         setActiveFieldId(null);
         break;
       case "TEXT":
-        // Text fields are handled inline
+      case "RADIO":
+      case "DROPDOWN":
+      case "ATTACHMENT":
+        // These are filled inline within the PDF overlay (text input, radio
+        // group, select, or file picker) — no modal or auto-fill needed.
         break;
     }
   };
@@ -252,6 +273,21 @@ export function SigningForm({
       }
 
       setStep("COMPLETE");
+
+      // Embedded signing: notify the host page and optionally bounce back.
+      if (embedded) {
+        try {
+          window.parent.postMessage(
+            { type: "swiftsign:completed", envelopeId: envelope.id },
+            "*"
+          );
+        } catch {
+          // postMessage can throw in exotic sandboxes — never block completion.
+        }
+        if (returnUrl) {
+          window.location.href = returnUrl;
+        }
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An unexpected error occurred"

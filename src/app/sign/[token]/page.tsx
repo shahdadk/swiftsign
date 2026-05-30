@@ -186,6 +186,9 @@ export default async function SignPage({ params, searchParams }: SignPageProps) 
         value: field.value,
         required: field.required,
         documentId: field.documentId,
+        options: Array.isArray(field.options)
+          ? (field.options as string[])
+          : null,
       }));
 
   return (

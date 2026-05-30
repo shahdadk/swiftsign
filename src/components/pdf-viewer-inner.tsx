@@ -2,7 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type FieldType = "SIGNATURE" | "NAME" | "DATE" | "TEXT" | "INITIALS" | "CHECKBOX";
+type FieldType =
+  | "SIGNATURE"
+  | "NAME"
+  | "DATE"
+  | "TEXT"
+  | "INITIALS"
+  | "CHECKBOX"
+  | "RADIO"
+  | "DROPDOWN"
+  | "ATTACHMENT";
 
 interface FieldOverlay {
   id: string;
@@ -14,6 +23,7 @@ interface FieldOverlay {
   height: number;
   value: string | null;
   required: boolean;
+  options?: string[] | null;
 }
 
 interface Props {
@@ -31,6 +41,9 @@ const FIELD_LABELS: Record<FieldType, string> = {
   DATE: "Date",
   TEXT: "Text",
   CHECKBOX: "Check",
+  RADIO: "Choose one",
+  DROPDOWN: "Select",
+  ATTACHMENT: "Attach file",
 };
 
 export default function PdfViewerInner({
