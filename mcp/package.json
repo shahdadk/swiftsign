@@ -1,6 +1,6 @@
 {
   "name": "swiftsign-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "SwiftSign MCP server for Claude Code — send documents for e-signature",
   "bin": {
     "swiftsign-mcp": "./dist/index.js"

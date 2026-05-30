@@ -1,0 +1,54 @@
+{
+  "name": "swiftsign",
+  "version": "0.1.0",
+  "description": "Official TypeScript SDK for the SwiftSign e-signature API.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "swiftsign",
+    "e-signature",
+    "esignature",
+    "docusign",
+    "signing",
+    "pdf",
+    "api",
+    "sdk"
+  ],
+  "author": "SwiftSign <hello@swiftsign.ca>",
+  "license": "MIT",
+  "homepage": "https://swiftsign.ca",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shahdadk/swiftsign.git",
+    "directory": "sdk-js"
+  },
+  "bugs": {
+    "url": "https://github.com/shahdadk/swiftsign/issues"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3"
+  }
+}

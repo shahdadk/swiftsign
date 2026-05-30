@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "swiftsign"
+version = "0.1.0"
+description = "Python SDK for the SwiftSign e-signature API."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Appfi", email = "natalie@appfi.dev" }]
+keywords = ["swiftsign", "esignature", "signing", "documents", "pdf"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2",
+]
+
+[project.urls]
+Homepage = "https://swiftsign.ca"
+Documentation = "https://swiftsign.ca/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["swiftsign"]
