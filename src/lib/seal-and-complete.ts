@@ -5,6 +5,7 @@ import { sendCompleted } from './email'
 import { logAudit } from './audit'
 import { sealDocument, type SealField } from './seal'
 import { generateCertificate, type CertificateData } from './certificate'
+import { getAuditTrail, verifyChain } from '@/lib/audit-verify'
 import { env } from './env'
 import { logger } from './logger'
 
@@ -50,6 +51,12 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
 
   const documentHashes: Record<string, string> = {}
 
+  // Capture the digital-signature outcome across documents for the certificate:
+  // prefer CAdES-T if any document achieved it, otherwise the last document's
+  // profile. tsaTime tracks the timestamp of the CAdES-T (or last) signature.
+  let certSignatureProfile = 'unsigned'
+  let certTsaTime: Date | null = null
+
   // 2. Seal each document
   for (const doc of envelope.documents) {
     // a. Download the original PDF from R2
@@ -90,6 +97,13 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
         finalPdf = result.signed
         signatureProfile = result.profile
         tsaTime = result.tsaTime
+
+        // Roll the per-document outcome up to the certificate-level vars.
+        // CAdES-T wins and is sticky once achieved by any document.
+        if (certSignatureProfile !== 'CAdES-T') {
+          certSignatureProfile = signatureProfile
+          certTsaTime = tsaTime
+        }
       } catch (signErr) {
         logger.error(signErr, { op: 'signPdfBuffer', envelopeId, docName: doc.name })
       }
@@ -155,6 +169,10 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
       ? allHashes[0]
       : allHashes.join('; ')
 
+  // Pull the verifiable audit trail + chain head for the certificate.
+  const auditTrail = await getAuditTrail(envelopeId)
+  const chain = await verifyChain(envelopeId)
+
   const certData: CertificateData = {
     envelopeId: envelope.id,
     subject: envelope.subject,
@@ -163,6 +181,16 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
     senderEmail: envelope.user.email,
     completedAt: new Date(),
     signers,
+    signatureProfile: certSignatureProfile,
+    tsaTimestamp: certTsaTime,
+    auditTrail: auditTrail.map((entry) => ({
+      seq: entry.seq,
+      event: entry.event,
+      actorEmail: entry.actorEmail,
+      ipAddress: entry.ipAddress,
+      createdAt: entry.createdAt,
+    })),
+    chainHead: chain.head,
   }
 
   const certificatePdf = await generateCertificate(certData)

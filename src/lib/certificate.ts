@@ -14,6 +14,16 @@ export interface CertificateData {
     signedAt: Date
     signatureMethod: string // 'drawn' | 'typed' | 'uploaded'
   }>
+  tsaTimestamp?: Date | null
+  signatureProfile?: string // e.g. 'CAdES-T'
+  auditTrail?: Array<{
+    seq: number | null
+    event: string
+    actorEmail: string | null
+    ipAddress: string | null
+    createdAt: Date
+  }>
+  chainHead?: string // the verified chain head hash
 }
 
 // Layout constants
@@ -325,6 +335,135 @@ export async function generateCertificate(
       color: DARK_GRAY,
     })
     y -= LINE_HEIGHT
+  }
+
+  // ═══════════════════════════════════════════════
+  // DIGITAL SIGNATURE
+  // ═══════════════════════════════════════════════
+
+  const isCadesT = data.signatureProfile === 'CAdES-T'
+
+  if (data.signatureProfile && data.signatureProfile !== 'unsigned') {
+    y -= 8
+    drawRule()
+
+    ensureSpace(80)
+
+    page.drawText('Digital Signature', {
+      x: MARGIN_LEFT,
+      y,
+      size: 14,
+      font: helveticaBold,
+      color: ACCENT,
+    })
+    y -= 20
+
+    const sigLines = isCadesT
+      ? [
+          'This document carries a PAdES (PKCS#7/CAdES-T) digital signature with',
+          'an RFC-3161 trusted timestamp, applied over the final sealed bytes.',
+        ]
+      : [
+          'This document carries a PAdES (PKCS#7/CAdES) digital signature applied',
+          'over the final sealed bytes.',
+        ]
+
+    for (const line of sigLines) {
+      ensureSpace(LINE_HEIGHT)
+      page.drawText(line, {
+        x: MARGIN_LEFT,
+        y,
+        size: 9,
+        font: helvetica,
+        color: DARK_GRAY,
+      })
+      y -= LINE_HEIGHT
+    }
+
+    y -= 6
+    drawRow('Signature Profile:', data.signatureProfile)
+    if (isCadesT && data.tsaTimestamp) {
+      drawRow('Trusted Timestamp (TSA):', formatDate(data.tsaTimestamp))
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // AUDIT TRAIL
+  // ═══════════════════════════════════════════════
+
+  if (data.auditTrail && data.auditTrail.length > 0) {
+    y -= 8
+    drawRule()
+
+    ensureSpace(60)
+
+    page.drawText('Audit Trail', {
+      x: MARGIN_LEFT,
+      y,
+      size: 14,
+      font: helveticaBold,
+      color: ACCENT,
+    })
+    y -= 20
+
+    for (const entry of data.auditTrail) {
+      ensureSpace(LINE_HEIGHT + 2)
+      const seqLabel = entry.seq != null ? `#${entry.seq}` : '#—'
+      const meta = [
+        entry.actorEmail ?? '—',
+        entry.ipAddress ?? '—',
+        formatDate(entry.createdAt),
+      ].join('  •  ')
+
+      page.drawText(`${seqLabel}  ${entry.event}`, {
+        x: MARGIN_LEFT,
+        y,
+        size: 9,
+        font: helveticaBold,
+        color: DARK_GRAY,
+      })
+      y -= LINE_HEIGHT - 2
+
+      ensureSpace(LINE_HEIGHT)
+      page.drawText(meta, {
+        x: MARGIN_LEFT + 12,
+        y,
+        size: 8,
+        font: helvetica,
+        color: MEDIUM_GRAY,
+      })
+      y -= LINE_HEIGHT
+    }
+
+    if (data.chainHead) {
+      y -= 4
+      ensureSpace(LINE_HEIGHT)
+      page.drawText('Chain head:', {
+        x: MARGIN_LEFT,
+        y,
+        size: 9,
+        font: helveticaBold,
+        color: DARK_GRAY,
+      })
+      const chainLabelWidth = helveticaBold.widthOfTextAtSize('Chain head:', 9)
+      page.drawText(data.chainHead, {
+        x: MARGIN_LEFT + chainLabelWidth + 6,
+        y,
+        size: 7,
+        font: courier,
+        color: BLACK,
+      })
+      y -= LINE_HEIGHT
+      ensureSpace(LINE_HEIGHT)
+      page.drawText('Verify at swiftsign.ca/verify', {
+        x: MARGIN_LEFT,
+        y,
+        size: 8,
+        font: helvetica,
+        color: MEDIUM_GRAY,
+      })
+      y -= LINE_HEIGHT
+    }
   }
 
   // ═══════════════════════════════════════════════
