@@ -52,8 +52,9 @@ export async function checkQuota(userId: string): Promise<QuotaResult> {
     }
   }
 
+  // Sandbox (test-mode) envelopes never count against the quota.
   const used = await prisma.envelope.count({
-    where: { userId, createdAt: { gte: start } },
+    where: { userId, createdAt: { gte: start }, livemode: true },
   })
 
   const remaining = Math.max(0, plan.monthlyEnvelopeQuota - used)

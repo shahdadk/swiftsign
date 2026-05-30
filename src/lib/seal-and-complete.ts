@@ -75,8 +75,11 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
         height: f.height,
       }))
 
-    // c. Seal the document (bake the visual field values).
-    const { sealedPdf: visualSealed } = await sealDocument(originalPdf, sealFields)
+    // c. Seal the document (bake the visual field values). Sandbox (test)
+    //    envelopes get a "TEST — NOT LEGALLY BINDING" watermark on every page.
+    const { sealedPdf: visualSealed } = await sealDocument(originalPdf, sealFields, {
+      watermark: !envelope.livemode,
+    })
 
     // c2. Apply the cryptographic PAdES/CAdES-T signature over the final bytes.
     //     The hash is computed over the SIGNED bytes so the public verifier
@@ -85,7 +88,9 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
     let finalPdf: Buffer = visualSealed
     let signatureProfile = 'unsigned'
     let tsaTime: Date | null = null
-    if (env.SIGNING_ENABLED) {
+    // Real PAdES signing applies to LIVE envelopes only; sandbox docs are
+    // decorative (watermarked, unsigned).
+    if (env.SIGNING_ENABLED && envelope.livemode) {
       try {
         const { signPdfBuffer } = await import('./signing/sign-pdf')
         const result = await signPdfBuffer(visualSealed, {
@@ -265,7 +270,7 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
         await sendCompleted(
           job.to,
           job.name,
-          envelope.subject,
+          envelope.livemode ? envelope.subject : `[TEST] ${envelope.subject}`,
           sealedAttachments,
           certAttachment
         )

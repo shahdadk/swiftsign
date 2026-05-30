@@ -199,7 +199,7 @@ async function handleSend(envelopeId: string, user: ActionUser) {
           recipient.email,
           recipient.name,
           user.name ?? 'User',
-          envelope.subject,
+          envelope.livemode ? envelope.subject : `[TEST] ${envelope.subject}`,
           signingUrl
         )
         await logAudit(envelopeId, 'EMAIL_SENT', {

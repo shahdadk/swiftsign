@@ -357,7 +357,7 @@ export async function POST(
           next.email,
           next.name,
           envelope.user.name ?? 'User',
-          envelope.subject,
+          envelope.livemode ? envelope.subject : `[TEST] ${envelope.subject}`,
           signingUrl
         )
 

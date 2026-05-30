@@ -125,15 +125,17 @@ export async function POST(request: Request) {
       return problem('rate_limited', { headers: rateLimitHeaders(rl) })
     }
 
-    // Quota: count of envelopes this calendar month vs plan
-    const quota = await checkQuota(user.id)
-    if (!quota.allowed) {
-      return problem('envelope_quota_exceeded', {
-        plan: quota.plan,
-        used: quota.used,
-        limit: quota.limit,
-        resetAt: quota.resetAt.toISOString(),
-      })
+    // Quota applies to LIVE envelopes only; sandbox (test-mode) sends are free.
+    if (auth.livemode) {
+      const quota = await checkQuota(user.id)
+      if (!quota.allowed) {
+        return problem('envelope_quota_exceeded', {
+          plan: quota.plan,
+          used: quota.used,
+          limit: quota.limit,
+          resetAt: quota.resetAt.toISOString(),
+        })
+      }
     }
 
     const rawBody = await request.text()
