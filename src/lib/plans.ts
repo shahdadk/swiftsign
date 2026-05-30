@@ -58,3 +58,11 @@ export function planFromPriceId(priceId: string): Plan {
   if (env.STRIPE_PRICE_TEAM_MONTHLY && priceId === env.STRIPE_PRICE_TEAM_MONTHLY) return 'TEAM'
   return 'FREE'
 }
+
+// Grace window after a failed payment before we downgrade to FREE — a paying
+// dev's API shouldn't break on a transient billing hiccup.
+export const GRACE_PERIOD_DAYS = 3
+
+export function isInGrace(graceEndsAt: Date | null | undefined): boolean {
+  return !!graceEndsAt && graceEndsAt.getTime() > Date.now()
+}

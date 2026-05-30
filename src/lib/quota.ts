@@ -1,5 +1,5 @@
 import { prisma } from './db'
-import { PLANS } from './plans'
+import { PLANS, isInGrace } from './plans'
 import type { Plan, SubscriptionStatus } from '@/generated/prisma/client'
 
 export type QuotaResult = {
@@ -33,7 +33,9 @@ export async function checkQuota(userId: string): Promise<QuotaResult> {
   })
 
   const hasActiveSub =
-    user.subscription && ACTIVE_STATUSES.includes(user.subscription.status)
+    user.subscription &&
+    (ACTIVE_STATUSES.includes(user.subscription.status) ||
+      isInGrace(user.subscription.graceEndsAt))
   const effectivePlan: Plan = hasActiveSub ? user.plan : 'FREE'
 
   const plan = PLANS[effectivePlan]

@@ -27,6 +27,7 @@ model User {
   subscription     Subscription?
   webhookEndpoints WebhookEndpoint[]
   apiKeys          ApiKey[]
+  invoices         Invoice[]
 }
 
 model Subscription {
@@ -37,6 +38,7 @@ model Subscription {
   stripePriceId      String
   status             SubscriptionStatus @default(ACTIVE)
   cancelAtPeriodEnd  Boolean            @default(false)
+  graceEndsAt        DateTime?
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
   createdAt          DateTime           @default(now())
@@ -321,6 +323,25 @@ model ApiKey {
 enum ApiKeyMode {
   LIVE
   TEST
+}
+
+// Local mirror of paid Stripe invoices (for receipts + the customer's billing
+// history without a round-trip to Stripe).
+model Invoice {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeInvoiceId  String    @unique
+  amountPaid       Int
+  currency         String
+  status           String
+  hostedInvoiceUrl String?
+  pdfUrl           String?
+  periodStart      DateTime?
+  periodEnd        DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([userId, createdAt])
 }
 
 // Versioned ESIGN/UETA consumer disclosure. The exact text shown to a signer is

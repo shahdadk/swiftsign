@@ -130,6 +130,91 @@ export async function sendNextSigner(
   })
 }
 
+export async function sendDunning(
+  to: string,
+  name: string,
+  opts: { reason: 'payment_failed' | 'action_required'; graceEndsAt?: Date }
+) {
+  const billingUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/billing`
+
+  const body =
+    opts.reason === 'payment_failed'
+      ? `<p>Your latest SwiftSign payment failed.${
+          opts.graceEndsAt
+            ? ` If it isn't resolved by <strong>${opts.graceEndsAt.toLocaleDateString()}</strong>, your subscription will be paused.`
+            : ' Please update your payment method to keep your subscription active.'
+        }</p>`
+      : `<p>Your bank needs to confirm your latest SwiftSign payment. Until you confirm it, the payment can't go through.</p>`
+
+  await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: 'Action needed: your SwiftSign payment',
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Action needed on your payment</h2>
+        <p>Hi ${name},</p>
+        ${body}
+        <p style="margin: 32px 0;">
+          <a href="${billingUrl}"
+             style="background: #0f172a; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+            Update payment method
+          </a>
+        </p>
+        <p style="color: #64748b; font-size: 14px;">
+          If you've already taken care of this, you can ignore this email.
+        </p>
+      </div>
+    `,
+  })
+}
+
+export async function sendReceipt(
+  to: string,
+  name: string,
+  opts: {
+    amount: number
+    currency: string
+    periodStart?: Date
+    periodEnd?: Date
+    invoiceUrl?: string
+  }
+) {
+  const formattedAmount = `$${(opts.amount / 100).toFixed(2)} ${opts.currency.toUpperCase()}`
+  const period =
+    opts.periodStart && opts.periodEnd
+      ? `<p style="color: #475569;">Billing period: ${opts.periodStart.toLocaleDateString()} – ${opts.periodEnd.toLocaleDateString()}</p>`
+      : ''
+
+  await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: 'Your SwiftSign receipt',
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Payment received</h2>
+        <p>Hi ${name},</p>
+        <p>Thanks for your payment. Here's your receipt.</p>
+        <p style="font-size: 20px; font-weight: 600; color: #0f172a; margin: 16px 0;">${formattedAmount}</p>
+        ${period}
+        ${
+          opts.invoiceUrl
+            ? `<p style="margin: 32px 0;">
+                <a href="${opts.invoiceUrl}"
+                   style="background: #0f172a; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                  View invoice
+                </a>
+              </p>`
+            : ''
+        }
+        <p style="color: #64748b; font-size: 14px;">
+          Keep this receipt for your records. Thanks for using SwiftSign.
+        </p>
+      </div>
+    `,
+  })
+}
+
 export async function sendMagicLink(to: string, link: string) {
   return getResend().emails.send({
     from: FROM,

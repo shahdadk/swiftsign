@@ -111,11 +111,14 @@ function loadEnv(): ServerEnv {
 
 export const env = loadEnv()
 
+// PRO billing only needs the secret + webhook secret + PRO price. A missing
+// TEAM price must NOT disable billing (TEAM is "contact sales" until set).
 export const billingEnabled =
   !!env.STRIPE_SECRET_KEY &&
   !!env.STRIPE_WEBHOOK_SECRET &&
-  !!env.STRIPE_PRICE_PRO_MONTHLY &&
-  !!env.STRIPE_PRICE_TEAM_MONTHLY
+  !!env.STRIPE_PRICE_PRO_MONTHLY
+
+export const teamSelfServeEnabled = !!env.STRIPE_PRICE_TEAM_MONTHLY
 
 export const loginAllowlist: string[] | null = env.ALLOWED_LOGIN_EMAILS
   ? env.ALLOWED_LOGIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)

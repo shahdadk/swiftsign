@@ -4,7 +4,8 @@ import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 import { env, billingEnabled } from '@/lib/env'
 import { logger } from '@/lib/logger'
-import { planFromPriceId } from '@/lib/plans'
+import { planFromPriceId, GRACE_PERIOD_DAYS } from '@/lib/plans'
+import { sendDunning, sendReceipt } from '@/lib/email'
 import type { SubscriptionStatus } from '@/generated/prisma/client'
 
 export const runtime = 'nodejs'
@@ -157,19 +158,92 @@ export async function POST(request: Request) {
       case 'invoice.payment_failed': {
         const inv = event.data.object as Stripe.Invoice
         const subId =
-          (inv as unknown as { subscription?: string }).subscription ??
-          undefined
+          (inv as unknown as { subscription?: string }).subscription ?? undefined
         if (subId) {
+          const graceEndsAt = new Date(
+            Date.now() + GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000
+          )
           await prisma.subscription.updateMany({
             where: { stripeSubId: subId },
-            data: { status: 'PAST_DUE' },
+            data: { status: 'PAST_DUE', graceEndsAt },
           })
+          const sub = await prisma.subscription.findUnique({
+            where: { stripeSubId: subId },
+            include: { user: true },
+          })
+          if (sub?.user) {
+            await sendDunning(sub.user.email, sub.user.name ?? 'there', {
+              reason: 'payment_failed',
+              graceEndsAt,
+            }).catch((e) => logger.error(e, { op: 'sendDunning' }))
+          }
         }
         break
       }
-      case 'invoice.paid':
-        // No-op for now; subscription.updated will fire too
+      case 'invoice.payment_action_required': {
+        const inv = event.data.object as Stripe.Invoice
+        const subId =
+          (inv as unknown as { subscription?: string }).subscription ?? undefined
+        if (subId) {
+          const sub = await prisma.subscription.findUnique({
+            where: { stripeSubId: subId },
+            include: { user: true },
+          })
+          if (sub?.user) {
+            await sendDunning(sub.user.email, sub.user.name ?? 'there', {
+              reason: 'action_required',
+            }).catch((e) => logger.error(e, { op: 'sendDunning' }))
+          }
+        }
         break
+      }
+      case 'invoice.paid': {
+        const inv = event.data.object as Stripe.Invoice
+        const customerId =
+          typeof inv.customer === 'string' ? inv.customer : inv.customer?.id
+        const user = customerId
+          ? await prisma.user.findFirst({ where: { stripeCustomerId: customerId } })
+          : null
+        if (user && inv.id) {
+          await prisma.invoice.upsert({
+            where: { stripeInvoiceId: inv.id },
+            update: {
+              status: inv.status ?? 'paid',
+              amountPaid: inv.amount_paid,
+              currency: inv.currency,
+              hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
+              pdfUrl: inv.invoice_pdf ?? null,
+            },
+            create: {
+              userId: user.id,
+              stripeInvoiceId: inv.id,
+              amountPaid: inv.amount_paid,
+              currency: inv.currency,
+              status: inv.status ?? 'paid',
+              hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
+              pdfUrl: inv.invoice_pdf ?? null,
+              periodStart: inv.period_start ? new Date(inv.period_start * 1000) : null,
+              periodEnd: inv.period_end ? new Date(inv.period_end * 1000) : null,
+            },
+          })
+          const subId =
+            (inv as unknown as { subscription?: string }).subscription ?? undefined
+          if (subId) {
+            await prisma.subscription.updateMany({
+              where: { stripeSubId: subId },
+              data: { graceEndsAt: null },
+            })
+          }
+          await sendReceipt(user.email, user.name ?? 'there', {
+            amount: inv.amount_paid,
+            currency: inv.currency,
+            periodStart: inv.period_start ? new Date(inv.period_start * 1000) : undefined,
+            periodEnd: inv.period_end ? new Date(inv.period_end * 1000) : undefined,
+            invoiceUrl: inv.hosted_invoice_url ?? undefined,
+          }).catch((e) => logger.error(e, { op: 'sendReceipt' }))
+        }
+        break
+      }
       default:
         // ignore other event types
         break
