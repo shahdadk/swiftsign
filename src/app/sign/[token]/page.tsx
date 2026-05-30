@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { SigningForm } from "@/components/signing-form";
 import { emit } from "@/lib/webhooks";
 import { getSession } from "@/lib/auth";
+import { getActiveDisclosure } from "@/lib/consent";
 
 interface SignPageProps {
   params: Promise<{ token: string }>;
@@ -154,27 +155,38 @@ export default async function SignPage({ params, searchParams }: SignPageProps) 
     where: { email_name: { email: recipient.email, name: recipient.name } },
   });
 
-  // Prepare data for client component
-  const documents = envelope.documents.map((doc) => ({
-    id: doc.id,
-    name: doc.name,
-    pageCount: doc.pageCount,
-    order: doc.order,
-  }));
+  // ESIGN gate: until the signer has accepted the disclosure, withhold all
+  // document data and page-image keys from the server payload so the doc can't
+  // be pulled pre-consent. Surface the active disclosure for the consent step.
+  const needsConsent = recipient.consentedAt === null;
 
-  // This signer's interactive fields
-  const fields = recipient.fields.map((field) => ({
-    id: field.id,
-    type: field.type,
-    page: field.page,
-    x: field.x,
-    y: field.y,
-    width: field.width,
-    height: field.height,
-    value: field.value,
-    required: field.required,
-    documentId: field.documentId,
-  }));
+  const disclosure = needsConsent ? await getActiveDisclosure() : null;
+
+  // Prepare data for client component — empty until consent exists.
+  const documents = needsConsent
+    ? []
+    : envelope.documents.map((doc) => ({
+        id: doc.id,
+        name: doc.name,
+        pageCount: doc.pageCount,
+        order: doc.order,
+      }));
+
+  // This signer's interactive fields — withheld until consent exists.
+  const fields = needsConsent
+    ? []
+    : recipient.fields.map((field) => ({
+        id: field.id,
+        type: field.type,
+        page: field.page,
+        x: field.x,
+        y: field.y,
+        width: field.width,
+        height: field.height,
+        value: field.value,
+        required: field.required,
+        documentId: field.documentId,
+      }));
 
   return (
     <>
@@ -200,7 +212,18 @@ export default async function SignPage({ params, searchParams }: SignPageProps) 
           email: recipient.email,
         }}
         documents={documents}
+        documentNames={envelope.documents.map((doc) => doc.name)}
         fields={fields}
+        needsConsent={needsConsent}
+        disclosure={
+          disclosure
+            ? {
+                version: disclosure.version,
+                body: disclosure.body,
+                hardwareSoftwareReqs: disclosure.hardwareSoftwareReqs,
+              }
+            : null
+        }
         savedSignature={savedAdoption?.signature ?? undefined}
         savedInitials={savedAdoption?.initials ?? undefined}
       />

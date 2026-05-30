@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { prisma } from './db'
 import { downloadPdf, uploadPdf } from './storage'
 import { sendCompleted } from './email'
@@ -67,15 +68,37 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
         height: f.height,
       }))
 
-    // c. Seal the document
-    const { sealedPdf, documentHash } = await sealDocument(
-      originalPdf,
-      sealFields
-    )
+    // c. Seal the document (bake the visual field values).
+    const { sealedPdf: visualSealed } = await sealDocument(originalPdf, sealFields)
+
+    // c2. Apply the cryptographic PAdES/CAdES-T signature over the final bytes.
+    //     The hash is computed over the SIGNED bytes so the public verifier
+    //     matches the file recipients download. If signing fails we log and ship
+    //     the visual-sealed bytes rather than hard-failing completion.
+    let finalPdf: Buffer = visualSealed
+    let signatureProfile = 'unsigned'
+    let tsaTime: Date | null = null
+    if (env.SIGNING_ENABLED) {
+      try {
+        const { signPdfBuffer } = await import('./signing/sign-pdf')
+        const result = await signPdfBuffer(visualSealed, {
+          reason: `Executed envelope ${envelopeId}`,
+          name: 'SwiftSign Inc.',
+          location: 'swiftsign.ca',
+          contactInfo: envelope.user.email,
+        })
+        finalPdf = result.signed
+        signatureProfile = result.profile
+        tsaTime = result.tsaTime
+      } catch (signErr) {
+        logger.error(signErr, { op: 'signPdfBuffer', envelopeId, docName: doc.name })
+      }
+    }
+    const documentHash = crypto.createHash('sha256').update(finalPdf).digest('hex')
 
     // d. Upload sealed PDF to R2
     const sealedKey = `sealed/${envelopeId}/${doc.name}`
-    await uploadPdf(sealedKey, sealedPdf)
+    await uploadPdf(sealedKey, finalPdf)
 
     // e. Update document record
     await prisma.document.update({
@@ -87,6 +110,7 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
     })
 
     documentHashes[doc.name] = documentHash
+    logger.info('document sealed', { envelopeId, docName: doc.name, signatureProfile, tsaTime })
   }
 
   // 3. Generate Certificate of Completion

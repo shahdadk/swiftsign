@@ -9,6 +9,7 @@ import { logger } from '@/lib/logger'
 import { signLimiter, rateLimitHeaders } from '@/lib/rate-limit'
 import { emit } from '@/lib/webhooks'
 import { captureGeo } from '@/lib/geo'
+import { isTokenExpired } from '@/lib/signing-token'
 import type { Prisma } from '@/generated/prisma/client'
 
 type Tx = Prisma.TransactionClient
@@ -75,6 +76,20 @@ export async function POST(
       )
     }
 
+    // 1b. Enforce single-use + expiry on the signing token.
+    if (isTokenExpired(recipient.tokenExpiresAt)) {
+      return NextResponse.json(
+        { error: 'This signing link has expired' },
+        { status: 410 }
+      )
+    }
+    if (recipient.tokenUsedAt) {
+      return NextResponse.json(
+        { error: 'This signing link has already been used' },
+        { status: 409 }
+      )
+    }
+
     // 2. Validate envelope is in SENT status
     if (recipient.envelope.status !== 'SENT') {
       return NextResponse.json(
@@ -89,6 +104,15 @@ export async function POST(
     if (recipient.status === 'SIGNED') {
       return NextResponse.json(
         { error: 'You have already signed this document' },
+        { status: 409 }
+      )
+    }
+
+    // 3b. Consent must have been captured BEFORE signing (and before document
+    // access — see /api/sign/[token]/consent). Reject if not consented.
+    if (!recipient.consentedAt) {
+      return NextResponse.json(
+        { error: 'Consent to electronic signing is required before signing' },
         { status: 409 }
       )
     }
@@ -153,6 +177,7 @@ export async function POST(
         data: {
           status: 'SIGNED',
           signedAt: new Date(),
+          tokenUsedAt: new Date(),
         },
       })
 
@@ -160,48 +185,51 @@ export async function POST(
         return { won: false as const }
       }
 
-      // Won the race — record consent, save fields, write audits.
-      await logAudit(envelope.id, 'ESIGN_CONSENT_ACCEPTED', {
-        actorName: recipient.name,
-        actorEmail: recipient.email,
-        ipAddress,
-        userAgent,
-        metadata: {
-          consentVersion: consent.version,
-          recipientId: recipient.id,
-        },
-      })
-
+      // Won the race — save fields, write audits. Consent was already captured
+      // and logged before document access (see /api/sign/[token]/consent), so we
+      // don't re-log it here. Pass `tx` so every audit row chains inside THIS
+      // transaction (logAudit otherwise opens its own, which would nest).
       for (const fv of fieldValues) {
         await tx.field.update({
           where: { id: fv.fieldId },
           data: { value: fv.value },
         })
 
-        await logAudit(envelope.id, 'FIELD_COMPLETED', {
+        await logAudit(
+          envelope.id,
+          'FIELD_COMPLETED',
+          {
+            actorName: recipient.name,
+            actorEmail: recipient.email,
+            ipAddress,
+            userAgent,
+            metadata: {
+              fieldId: fv.fieldId,
+              recipientId: recipient.id,
+            },
+          },
+          tx
+        )
+      }
+
+      await logAudit(
+        envelope.id,
+        'RECIPIENT_SIGNED',
+        {
           actorName: recipient.name,
           actorEmail: recipient.email,
           ipAddress,
           userAgent,
           metadata: {
-            fieldId: fv.fieldId,
             recipientId: recipient.id,
+            consentVersion: consent.version,
+            country: geo.country,
+            region: geo.region,
+            city: geo.city,
           },
-        })
-      }
-
-      await logAudit(envelope.id, 'RECIPIENT_SIGNED', {
-        actorName: recipient.name,
-        actorEmail: recipient.email,
-        ipAddress,
-        userAgent,
-        metadata: {
-          recipientId: recipient.id,
-          country: geo.country,
-          region: geo.region,
-          city: geo.city,
         },
-      })
+        tx
+      )
 
       return { won: true as const }
     })

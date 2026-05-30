@@ -30,8 +30,19 @@ const ServerSchema = z.object({
 
   NEXT_PUBLIC_APP_URL: z.string().url(),
 
+  // Document-signing cert. Prod injects P12_CERT_BASE64 (base64 of the .p12);
+  // dev falls back to the bundled self-signed certs/swiftsign.p12 via P12_CERT_PATH.
   P12_CERT_PATH: z.string().optional(),
   P12_CERT_PASSWORD: z.string().optional(),
+  P12_CERT_BASE64: z.string().optional(),
+  TSA_URL: z.string().url().default('http://timestamp.digicert.com'),
+  TSA_URL_FALLBACK: z.string().url().default('http://timestamp.sectigo.com'),
+  // Kill switch: set to the literal "false" to seal visual-only (no PAdES) if
+  // the cert/TSA is misconfigured, so completion still works.
+  SIGNING_ENABLED: z
+    .string()
+    .default('true')
+    .transform((v) => v !== 'false'),
 
   WEBHOOK_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
 
@@ -64,6 +75,10 @@ const stub: ServerEnv = {
   NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
   P12_CERT_PATH: undefined,
   P12_CERT_PASSWORD: undefined,
+  P12_CERT_BASE64: undefined,
+  TSA_URL: 'http://timestamp.digicert.com',
+  TSA_URL_FALLBACK: 'http://timestamp.sectigo.com',
+  SIGNING_ENABLED: true,
   WEBHOOK_TIMEOUT_MS: 5000,
   ALLOWED_LOGIN_EMAILS: undefined,
 }

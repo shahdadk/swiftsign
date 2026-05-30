@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { downloadPdf } from '@/lib/storage'
+import { isTokenExpired } from '@/lib/signing-token'
 
 export async function GET(
   request: NextRequest,
@@ -28,13 +29,28 @@ export async function GET(
     // Validate token: find recipient by signingToken
     const recipient = await prisma.recipient.findUnique({
       where: { signingToken: token },
-      select: { envelopeId: true },
+      select: { envelopeId: true, tokenExpiresAt: true, consentedAt: true },
     })
 
     if (!recipient) {
       return NextResponse.json(
         { error: 'Invalid signing token' },
         { status: 401 },
+      )
+    }
+
+    // Signer-token path: block expired links and pre-consent page-image access.
+    if (isTokenExpired(recipient.tokenExpiresAt)) {
+      return NextResponse.json(
+        { error: 'link expired' },
+        { status: 410 },
+      )
+    }
+
+    if (recipient.consentedAt === null) {
+      return NextResponse.json(
+        { error: 'consent required' },
+        { status: 403 },
       )
     }
 

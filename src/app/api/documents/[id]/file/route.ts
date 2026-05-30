@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { downloadPdf } from '@/lib/storage'
 import { logger } from '@/lib/logger'
+import { isTokenExpired } from '@/lib/signing-token'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,11 +22,21 @@ export async function GET(
 
   const recipient = await prisma.recipient.findUnique({
     where: { signingToken: token },
-    select: { envelopeId: true },
+    select: { envelopeId: true, tokenExpiresAt: true, consentedAt: true },
   })
 
   if (!recipient) {
     return NextResponse.json({ error: 'Invalid signing token' }, { status: 401 })
+  }
+
+  // Signer-token path: bytes can't be fetched on an expired link or before the
+  // ESIGN disclosure is accepted.
+  if (isTokenExpired(recipient.tokenExpiresAt)) {
+    return NextResponse.json({ error: 'link expired' }, { status: 410 })
+  }
+
+  if (recipient.consentedAt === null) {
+    return NextResponse.json({ error: 'consent required' }, { status: 403 })
   }
 
   const document = await prisma.document.findUnique({

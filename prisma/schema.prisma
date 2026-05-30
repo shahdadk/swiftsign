@@ -157,18 +157,23 @@ model Document {
 }
 
 model Recipient {
-  id           String          @id @default(cuid())
-  envelopeId   String
-  envelope     Envelope        @relation(fields: [envelopeId], references: [id])
-  name         String
-  email        String
-  role         RecipientRole   @default(SIGNER)
-  routingOrder Int             @default(1)
-  status       RecipientStatus @default(PENDING)
-  signingToken String          @unique @default(cuid())
-  signedAt     DateTime?
-  viewedAt     DateTime?
-  fields       Field[]
+  id             String          @id @default(cuid())
+  envelopeId     String
+  envelope       Envelope        @relation(fields: [envelopeId], references: [id])
+  name           String
+  email          String
+  role           RecipientRole   @default(SIGNER)
+  routingOrder   Int             @default(1)
+  status         RecipientStatus @default(PENDING)
+  // App-generated CSPRNG token (lib/signing-token.ts). Single-use + expiry.
+  signingToken   String          @unique
+  tokenExpiresAt DateTime?
+  tokenUsedAt    DateTime?
+  consentedAt    DateTime?
+  signedAt       DateTime?
+  viewedAt       DateTime?
+  fields         Field[]
+  consentRecords ConsentRecord[]
 }
 
 model Field {
@@ -198,6 +203,15 @@ model AuditLog {
   userAgent  String?
   metadata   Json?
   createdAt  DateTime   @default(now())
+  // Tamper-evident per-envelope hash chain. New rows are chained in logAudit;
+  // rows predating the chain stay null. Append-only is enforced at the DB by
+  // BEFORE UPDATE/DELETE triggers (see the audit_immutable migration).
+  seq        Int?
+  prevHash   String?
+  rowHash    String?
+
+  @@unique([envelopeId, seq])
+  @@index([envelopeId, seq])
 }
 
 enum EnvelopeStatus {
@@ -307,4 +321,32 @@ model ApiKey {
 enum ApiKeyMode {
   LIVE
   TEST
+}
+
+// Versioned ESIGN/UETA consumer disclosure. The exact text shown to a signer is
+// stored so the consent is reproducible years later.
+model ConsentDisclosure {
+  id                   String          @id @default(cuid())
+  version              String          @unique
+  effectiveAt          DateTime        @default(now())
+  body                 String
+  hardwareSoftwareReqs String
+  isActive             Boolean         @default(true)
+  records              ConsentRecord[]
+}
+
+// One row per signer who accepted the disclosure, captured BEFORE document
+// access, with IP/UA/timestamp for attribution.
+model ConsentRecord {
+  id                String            @id @default(cuid())
+  recipientId       String
+  recipient         Recipient         @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  disclosureId      String
+  disclosure        ConsentDisclosure @relation(fields: [disclosureId], references: [id])
+  disclosureVersion String
+  acceptedAt        DateTime          @default(now())
+  ipAddress         String
+  userAgent         String
+
+  @@index([recipientId])
 }

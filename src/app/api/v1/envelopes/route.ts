@@ -16,6 +16,7 @@ import { logger } from '@/lib/logger'
 import { checkQuota } from '@/lib/quota'
 import { envelopeLimiterFor, rateLimitHeaders } from '@/lib/rate-limit'
 import { env } from '@/lib/env'
+import { newSigningToken, tokenExpiry } from '@/lib/signing-token'
 import type { Prisma } from '@/generated/prisma/client'
 
 const MAX_DOC_BYTES = 25 * 1024 * 1024
@@ -424,6 +425,8 @@ export async function POST(request: Request) {
               email: r.email,
               role: r.role,
               routingOrder: r.routingOrder,
+              signingToken: newSigningToken(),
+              tokenExpiresAt: tokenExpiry(),
             },
           })
           recipientRecords.push(record)
