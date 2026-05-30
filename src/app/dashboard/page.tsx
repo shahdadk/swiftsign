@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { checkQuota } from '@/lib/quota';
+import { env } from '@/lib/env';
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-700',
@@ -16,7 +17,7 @@ export default async function DashboardPage() {
   const user = await getSession();
   if (!user) redirect('/dashboard/login');
 
-  const [envelopes, quota] = await Promise.all([
+  const [envelopes, quota, apiKeys] = await Promise.all([
     prisma.envelope.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
@@ -30,7 +31,16 @@ export default async function DashboardPage() {
       },
     }),
     checkQuota(user.id),
+    prisma.apiKey.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'asc' },
+    }),
   ]);
+
+  // Display-only key hint. Secrets are never stored in plaintext and are only
+  // shown once at creation — prefer a test key for the quickstart, else any key.
+  const hintKey = apiKeys.find((k) => k.mode === 'TEST') ?? apiKeys[0];
+  const keyHint = hintKey ? `${hintKey.prefix}…` : null;
 
   const showQuotaBar = quota.limit !== 'unlimited';
   const usagePct = showQuotaBar
@@ -78,40 +88,38 @@ export default async function DashboardPage() {
 
         {envelopes.length === 0 ? (
           <div className="space-y-6">
-            {/* API Key */}
+            {/* Quickstart */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-1">Your API Key</h3>
-              <p className="text-sm text-gray-500 mb-3">Use this to send documents from Claude Code or any API client.</p>
-              <code className="block bg-gray-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono break-all select-all">
-                {user.apiKey || 'No API key — contact support'}
-              </code>
-            </div>
+              <h3 className="font-semibold text-gray-900 mb-1">Quickstart</h3>
+              {keyHint ? (
+                <p className="text-sm text-gray-500 mb-4">
+                  Send your first document for signing from Claude Code or any API client. Your test
+                  key starts with{' '}
+                  <code className="font-mono text-gray-700 bg-gray-100 rounded px-1 py-0.5">
+                    {keyHint}
+                  </code>
+                  {' — '}
+                  <Link href="/dashboard/settings" className="text-blue-600 hover:underline">
+                    reveal your full key in Settings
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 mb-4">
+                  Send your first document for signing from Claude Code or any API client.{' '}
+                  <Link href="/dashboard/settings" className="text-blue-600 hover:underline">
+                    Create your first API key in Settings
+                  </Link>{' '}
+                  to get started.
+                </p>
+              )}
 
-            {/* Claude Code Setup */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-1">Set up with Claude Code</h3>
-              <p className="text-sm text-gray-500 mb-3">Add the SwiftSign MCP server to your Claude Code config:</p>
-              <pre className="bg-gray-900 text-gray-100 rounded-lg px-4 py-3 text-xs font-mono overflow-x-auto whitespace-pre">{`// Add to .mcp.json
-{
-  "mcpServers": {
-    "swiftsign": {
-      "command": "npx",
-      "args": ["@swiftsign/mcp"],
-      "env": {
-        "SWIFTSIGN_API_KEY": "${user.apiKey || 'sk_...'}"
-      }
-    }
-  }
-}`}</pre>
-              <p className="text-xs text-gray-400 mt-2">MCP server coming soon. For now, use the REST API below.</p>
-            </div>
+              <p className="text-xs font-medium text-gray-500 mb-1.5">1. Install the SDK</p>
+              <pre className="bg-gray-900 text-gray-100 rounded-lg px-4 py-3 text-sm font-mono overflow-x-auto whitespace-pre mb-5">{`npm install swiftsign`}</pre>
 
-            {/* REST API Example */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-1">Send via REST API</h3>
-              <p className="text-sm text-gray-500 mb-3">Send a document for signing with a single API call:</p>
-              <pre className="bg-gray-900 text-gray-100 rounded-lg px-4 py-3 text-xs font-mono overflow-x-auto whitespace-pre">{`curl -X POST https://swiftsign-nine.vercel.app/api/v1/envelopes \\
-  -H "Authorization: Bearer ${user.apiKey || 'sk_...'}" \\
+              <p className="text-xs font-medium text-gray-500 mb-1.5">2. Send an envelope</p>
+              <pre className="bg-gray-900 text-gray-100 rounded-lg px-4 py-3 text-xs font-mono overflow-x-auto whitespace-pre">{`curl -X POST ${env.NEXT_PUBLIC_APP_URL}/api/v1/envelopes \\
+  -H "Authorization: Bearer ${keyHint ?? 'sk_test_...'}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "subject": "Services Agreement",
@@ -136,6 +144,18 @@ export default async function DashboardPage() {
       "height": 5
     }]
   }'`}</pre>
+              <p className="text-xs text-gray-400 mt-2">
+                Replace the Bearer token with your full test key — reveal it in Settings.
+              </p>
+
+              <div className="flex items-center gap-4 mt-4 text-sm">
+                <Link href="/docs" className="text-blue-600 hover:underline">
+                  Read the docs
+                </Link>
+                <Link href="/dashboard/settings" className="text-blue-600 hover:underline">
+                  {keyHint ? 'Manage API keys' : 'Create an API key'}
+                </Link>
+              </div>
             </div>
 
             {/* Empty state */}

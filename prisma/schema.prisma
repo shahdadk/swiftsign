@@ -21,6 +21,9 @@ model User {
   createdAt        DateTime          @default(now())
   stripeCustomerId String?           @unique
   plan             Plan              @default(FREE)
+  tosAcceptedVersion String?
+  tosAcceptedAt      DateTime?
+  onboardedAt        DateTime?
   envelopes        Envelope[]
   accounts         Account[]
   sessions         Session[]

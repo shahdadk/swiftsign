@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import crypto from 'crypto'
 import { env } from './env'
 import { hashApiKey, createApiKey } from './api-key'
+import { TOS_VERSION } from './legal'
 
 // --- API Key auth (for programmatic access via Claude Code / MCP) ---
 
@@ -111,7 +112,9 @@ export async function verifyMagicLink(token: string, email: string): Promise<Use
   // an agent is productive on first login; live keys are created explicitly.
   let user = await prisma.user.findUnique({ where: { email } })
   if (!user) {
-    user = await prisma.user.create({ data: { email } })
+    user = await prisma.user.create({
+      data: { email, tosAcceptedVersion: TOS_VERSION, tosAcceptedAt: new Date() },
+    })
     await createApiKey(user.id, { name: 'Default', mode: 'TEST' })
   }
 

@@ -52,29 +52,15 @@ export default function LoginPage() {
               </div>
               <h2 className="text-lg font-semibold text-gray-900 text-center mb-1">Check your email</h2>
               <p className="text-sm text-gray-500 text-center">
-                If <strong>{email}</strong> is on the beta allowlist, a sign-in link is on its way.
-                Otherwise{' '}
-                <a
-                  href="mailto:hello@swiftsign.ca?subject=SwiftSign%20beta%20access"
-                  className="text-blue-600 hover:underline"
-                >
-                  request access
-                </a>
-                .
+                We sent a sign-in link to <strong>{email}</strong>. Click it to continue. The link
+                expires in 15 minutes.
               </p>
             </>
           ) : (
             <>
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">Sign in to SwiftSign</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Sign in or create your account</h2>
               <p className="text-sm text-gray-500 mb-6">
-                Private beta — only invited emails can sign in.{' '}
-                <a
-                  href="mailto:hello@swiftsign.ca?subject=SwiftSign%20beta%20access"
-                  className="text-blue-600 hover:underline"
-                >
-                  Request access
-                </a>
-                .
+                Enter your email and we&apos;ll send you a magic link. No password required.
               </p>
 
               <form onSubmit={handleSubmit}>
@@ -95,9 +81,21 @@ export default function LoginPage() {
                   disabled={loading || !email}
                   className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loading ? 'Sending...' : 'Send sign-in link'}
+                  {loading ? 'Sending...' : 'Continue with email'}
                 </button>
               </form>
+
+              <p className="text-xs text-gray-400 mt-4 text-center">
+                By continuing you agree to our{' '}
+                <a href="/legal/terms" className="text-gray-500 hover:underline">
+                  Terms
+                </a>{' '}
+                and{' '}
+                <a href="/legal/privacy" className="text-gray-500 hover:underline">
+                  Privacy Policy
+                </a>
+                .
+              </p>
             </>
           )}
         </div>
