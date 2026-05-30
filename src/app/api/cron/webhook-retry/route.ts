@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { env } from '@/lib/env'
@@ -8,9 +9,20 @@ import { MAX_ATTEMPTS } from '@/lib/webhook-retry'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+function authorized(auth: string | null): boolean {
+  if (auth === null) return false
+  const expected = `Bearer ${env.CRON_SECRET}`
+  const a = Buffer.from(auth)
+  const b = Buffer.from(expected)
+  // timingSafeEqual throws on length mismatch; guard first so we reject without
+  // throwing and without leaking length via timing.
+  if (a.length !== b.length) return false
+  return crypto.timingSafeEqual(a, b)
+}
+
 export async function GET(request: Request) {
   const auth = request.headers.get('authorization')
-  if (auth !== `Bearer ${env.CRON_SECRET}`) {
+  if (!authorized(auth)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

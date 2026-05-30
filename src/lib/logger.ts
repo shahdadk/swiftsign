@@ -1,4 +1,5 @@
 import { env } from './env'
+import { scrubSecrets } from './secret-scrub'
 
 type Level = 'debug' | 'info' | 'warn' | 'error'
 type Ctx = Record<string, unknown> | undefined
@@ -10,12 +11,16 @@ const minLevel: Level =
 
 function emit(level: Level, msg: string, ctx?: Ctx) {
   if (order[level] < order[minLevel]) return
-  const line = JSON.stringify({
-    level,
-    msg,
-    ts: new Date().toISOString(),
-    ...ctx,
-  })
+  // Scrub the message + context (which includes any serialized error
+  // stack/message) so a raw key/secret never reaches console output.
+  const line = JSON.stringify(
+    scrubSecrets({
+      level,
+      msg,
+      ts: new Date().toISOString(),
+      ...ctx,
+    })
+  )
   if (level === 'error') console.error(line)
   else if (level === 'warn') console.warn(line)
   else console.log(line)

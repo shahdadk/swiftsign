@@ -14,8 +14,10 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Generated Prisma client (gitignored)
     "src/generated/**",
-    // MCP package has its own tsconfig + build pipeline
+    // MCP package + SDKs have their own tsconfig + build pipeline
     "mcp/**",
+    "sdk-js/**",
+    "sdk-python/**",
     // Standalone seed script
     "prisma/seed.ts",
     // pdfjs worker file (copied from node_modules at build time)

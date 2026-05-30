@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  lint-and-build:
-    name: Lint and build
+  verify:
+    name: Typecheck, lint, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -17,19 +17,32 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
+      # Each step below is a blocking gate, run in order. A failure short-circuits
+      # the job — nothing ships unless typecheck, lint, the unit suite, and the
+      # production build all pass.
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Lint
         run: npm run lint
 
+      - name: Unit tests
+        run: npm run test
+
       - name: Build
         env:
+          # The env module returns its stub during the build phase; real secrets
+          # are not present in CI.
           SKIP_ENV_VALIDATION: '1'
         run: npm run build
+
+  # TODO(e2e): add a Playwright / end-to-end job as a follow-up. Unit-only for now.

@@ -50,6 +50,18 @@ const ServerSchema = z.object({
   // If unset, signup is open to anyone. Set this to gate the magic-link flow
   // for closed-beta / internal-use deployments.
   ALLOWED_LOGIN_EMAILS: z.string().optional(),
+}).superRefine((val, ctx) => {
+  // SENTRY_DSN is optional in dev/test/build but REQUIRED in a production
+  // runtime so errors are never silently dropped. The stub bypass in loadEnv()
+  // skips parse entirely during builds and non-prod runs, so this only fires
+  // when a real production process validates process.env.
+  if (val.NODE_ENV === 'production' && !val.SENTRY_DSN) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['SENTRY_DSN'],
+      message: 'SENTRY_DSN is required in production',
+    })
+  }
 })
 
 type ServerEnv = z.infer<typeof ServerSchema>
