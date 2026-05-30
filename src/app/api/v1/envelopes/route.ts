@@ -72,17 +72,24 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const user = await authenticateApiKey(request)
-    if (!user) {
+    const auth = await authenticateApiKey(request)
+    if (!auth) {
       return NextResponse.json(
         { error: 'Unauthorized — provide a valid Bearer API key' },
         { status: 401 }
       )
     }
+    const { user, apiKey } = auth
+    if (!apiKey.scopes.includes('envelopes:write')) {
+      return NextResponse.json(
+        { error: 'API key lacks the envelopes:write scope' },
+        { status: 403 }
+      )
+    }
 
     // Rate-limit by API key, plan-aware
     const limiter = envelopeLimiterFor(user.plan)
-    const rl = await limiter.limit(user.apiKey ?? user.id)
+    const rl = await limiter.limit(apiKey.id)
     if (!rl.success) {
       return NextResponse.json(
         { error: 'Too many requests' },
@@ -482,11 +489,18 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const user = await authenticateApiKey(request)
-    if (!user) {
+    const auth = await authenticateApiKey(request)
+    if (!auth) {
       return NextResponse.json(
         { error: 'Unauthorized — provide a valid Bearer API key' },
         { status: 401 }
+      )
+    }
+    const { user, apiKey } = auth
+    if (!apiKey.scopes.includes('envelopes:read')) {
+      return NextResponse.json(
+        { error: 'API key lacks the envelopes:read scope' },
+        { status: 403 }
       )
     }
 

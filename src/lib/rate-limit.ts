@@ -2,6 +2,7 @@ import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { env } from './env'
 import { logger } from './logger'
+import { takeToken } from './token-bucket'
 
 let cached: Redis | null = null
 
@@ -21,20 +22,35 @@ type LimitResult = {
   reset: number
 }
 
-// Fail-open wrapper: if Upstash is unreachable (network failure, placeholder creds,
-// or outage), allow the request through and log a warning. Better to slightly
-// over-serve than to black-hole every request when our limiter is down.
-function safeLimit(rl: Ratelimit, key: string, name: string) {
+// Fail-CLOSED wrapper: if Upstash is unreachable (network failure, placeholder
+// creds, or outage), fall back to a per-process in-memory token bucket with
+// tighter limits. A real outage still throttles abusers instead of opening the
+// gates, while a transient blip doesn't black-hole legitimate single users.
+function safeLimit(
+  rl: Ratelimit,
+  key: string,
+  name: string,
+  fallback: { capacity: number; refillPerSec: number } = {
+    capacity: 5,
+    refillPerSec: 5 / 60,
+  }
+) {
   return {
     async limit(k: string = key): Promise<LimitResult> {
       try {
         return await rl.limit(k)
       } catch (err) {
-        logger.warn('Rate limiter unavailable, failing open', {
+        logger.warn('Rate limiter unavailable, failing closed (memory fallback)', {
           limiter: name,
           err: err instanceof Error ? err.message : String(err),
         })
-        return { success: true, limit: 0, remaining: 0, reset: 0 }
+        const ok = takeToken(`${name}:${k}`, fallback.capacity, fallback.refillPerSec)
+        return {
+          success: ok,
+          limit: fallback.capacity,
+          remaining: ok ? Math.max(0, fallback.capacity - 1) : 0,
+          reset: Date.now() + 60_000,
+        }
       }
     },
   }
@@ -71,6 +87,34 @@ export const signLimiter = safeLimit(
   }),
   '',
   'sign'
+)
+
+// Per-IP limiter for the signer mutation routes — stops one IP brute-forcing
+// many signing tokens.
+export const signIpLimiter = safeLimit(
+  new Ratelimit({
+    redis: redis(),
+    limiter: Ratelimit.slidingWindow(30, '1 m'),
+    prefix: 'rl:sign-ip',
+    analytics: false,
+  }),
+  '',
+  'signIp',
+  { capacity: 10, refillPerSec: 0.5 }
+)
+
+// Per-IP signup-velocity limiter — caps new-account creation from one IP now
+// that signup is public.
+export const signupVelocityLimiter = safeLimit(
+  new Ratelimit({
+    redis: redis(),
+    limiter: Ratelimit.slidingWindow(3, '1 h'),
+    prefix: 'rl:signup',
+    analytics: false,
+  }),
+  '',
+  'signup',
+  { capacity: 3, refillPerSec: 3 / 3600 }
 )
 
 const envelopeLimiterFree = safeLimit(

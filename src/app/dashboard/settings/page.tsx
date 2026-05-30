@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+import { publicApiKeyView } from '@/lib/api-key'
 import { ApiKeyCard } from './api-key-card'
 import { SessionsCard } from './sessions-card'
 
@@ -8,6 +10,12 @@ export const dynamic = 'force-dynamic'
 export default async function SettingsPage() {
   const user = await getSession()
   if (!user) redirect('/dashboard/login')
+
+  const keyRecords = await prisma.apiKey.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: 'desc' },
+  })
+  const keys = keyRecords.map(publicApiKeyView)
 
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
@@ -21,7 +29,7 @@ export default async function SettingsPage() {
         <p className="text-sm text-gray-500 mb-3">{user.email}</p>
       </section>
 
-      <ApiKeyCard initialKey={user.apiKey ?? ''} />
+      <ApiKeyCard initialKeys={keys} />
 
       <SessionsCard />
     </main>

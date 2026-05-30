@@ -12,7 +12,10 @@ model User {
   email            String            @unique
   name             String?
   company          String?
-  apiKey           String?           @unique @default(cuid())
+  // Legacy single plaintext key. Superseded by the ApiKey table (hashed,
+  // multi-key, scoped). Kept nullable only for backfill; new code never reads
+  // it. Drop in a follow-up migration once backfill is verified in prod.
+  apiKey           String?           @unique
   emailVerified    DateTime?
   image            String?
   createdAt        DateTime          @default(now())
@@ -23,6 +26,7 @@ model User {
   sessions         Session[]
   subscription     Subscription?
   webhookEndpoints WebhookEndpoint[]
+  apiKeys          ApiKey[]
 }
 
 model Subscription {
@@ -274,4 +278,33 @@ model IdempotencyKey {
 
   @@unique([userId, key])
   @@index([expiresAt])
+}
+
+// Hashed, multi-key, scoped API keys. Replaces the single plaintext
+// User.apiKey. The plaintext secret is shown once at creation and never
+// stored; we store sha256(secret) and look it up by the unique hash.
+// `mode` mirrors the sk_live_ / sk_test_ prefix and drives livemode behaviour
+// across billing, sealing, and sandbox.
+model ApiKey {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String?
+  hashedKey  String     @unique
+  prefix     String // e.g. "sk_live_a1b2c3" — for identification in the dashboard
+  last4      String
+  mode       ApiKeyMode @default(LIVE)
+  scopes     String[]   @default([])
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime   @default(now())
+
+  @@index([userId])
+  @@index([prefix])
+}
+
+enum ApiKeyMode {
+  LIVE
+  TEST
 }

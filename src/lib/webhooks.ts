@@ -4,6 +4,7 @@ import { prisma } from './db'
 import { env } from './env'
 import { logger } from './logger'
 import { nextAttemptAt } from './webhook-retry'
+import { assertPublicUrl } from './ssrf'
 
 export type WebhookEventType =
   | 'envelope.sent'
@@ -31,6 +32,15 @@ async function deliverOnce(
 ): Promise<{ ok: boolean; statusCode: number | null; error: string | null }> {
   const ts = Math.floor(Date.now() / 1000)
   const sig = sign(secret, ts, body)
+  // SSRF guard: re-validate the destination immediately before connecting so a
+  // URL that was public at creation can't be pointed at an internal address.
+  try {
+    await assertPublicUrl(url)
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'ssrf-blocked'
+    logger.warn('Webhook delivery blocked by SSRF guard', { endpointId, url, reason })
+    return { ok: false, statusCode: null, error: reason }
+  }
   try {
     const ctrl = new AbortController()
     const timeout = setTimeout(() => ctrl.abort(), env.WEBHOOK_TIMEOUT_MS)

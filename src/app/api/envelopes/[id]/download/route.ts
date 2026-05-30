@@ -32,8 +32,15 @@ export async function GET(
     let authorized = false
 
     // Option 1: API key — envelope owner
-    const user = await authenticateApiKey(request)
-    if (user) {
+    const auth = await authenticateApiKey(request)
+    if (auth) {
+      const { user, apiKey } = auth
+      if (!apiKey.scopes.includes('envelopes:read')) {
+        return NextResponse.json(
+          { error: 'API key lacks the envelopes:read scope' },
+          { status: 403 }
+        )
+      }
       const envelope = await prisma.envelope.findUnique({
         where: { id: envelopeId, userId: user.id },
         select: { id: true },

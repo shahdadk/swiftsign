@@ -1,6 +1,5 @@
 import { prisma } from './db'
 import { PLANS } from './plans'
-import { billingEnabled } from './env'
 import type { Plan, SubscriptionStatus } from '@/generated/prisma/client'
 
 export type QuotaResult = {
@@ -25,18 +24,9 @@ function utcStartOfNextMonth(d: Date = new Date()): Date {
 export async function checkQuota(userId: string): Promise<QuotaResult> {
   const reset = utcStartOfNextMonth()
 
-  // Billing not configured yet — everyone gets unlimited during the beta.
-  if (!billingEnabled) {
-    return {
-      allowed: true,
-      plan: 'PRO',
-      used: 0,
-      limit: 'unlimited',
-      remaining: 'unlimited',
-      resetAt: reset,
-    }
-  }
-
+  // FREE accounts are always capped (per PLANS), regardless of whether Stripe is
+  // configured — public signup must not grant unlimited free envelopes. Only an
+  // active paid subscription lifts the cap.
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
     include: { subscription: true },
