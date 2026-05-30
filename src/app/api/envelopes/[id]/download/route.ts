@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { authenticateApiKey } from '@/lib/auth'
+import { authenticateApiKey, getSession } from '@/lib/auth'
 import { downloadPdf } from '@/lib/storage'
 
 /**
@@ -8,9 +8,11 @@ import { downloadPdf } from '@/lib/storage'
  *
  * Returns the sealed (signed) PDF for download.
  *
- * Authentication:
+ * Authentication (any of):
  *   - Bearer API key (Authorization header) — for envelope owner
  *   - Signing token (query param ?token=...) — for recipients
+ *   - Dashboard session cookie — for envelope owner (lets dashboard
+ *     download buttons work without exposing API keys in <a href>)
  *
  * Query params:
  *   - token: recipient signing token (alternative to API key)
@@ -59,9 +61,22 @@ export async function GET(
       }
     }
 
+    // Option 3: Dashboard session cookie — envelope owner. Lets dashboard
+    // download buttons work via a plain <a href> without exposing API keys.
+    if (!authorized) {
+      const sessionUser = await getSession()
+      if (sessionUser) {
+        const envelope = await prisma.envelope.findUnique({
+          where: { id: envelopeId, userId: sessionUser.id },
+          select: { id: true },
+        })
+        if (envelope) authorized = true
+      }
+    }
+
     if (!authorized) {
       return NextResponse.json(
-        { error: 'Unauthorized — provide a valid API key or signing token' },
+        { error: 'Unauthorized — provide a valid API key, signing token, or sign in to the dashboard' },
         { status: 401 }
       )
     }
