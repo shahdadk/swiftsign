@@ -1,15 +1,65 @@
+import Link from 'next/link';
+import { Logo } from '@/components/landing/icons';
+
 export default function VerifyPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm text-center">
-        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-          </svg>
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'var(--bg)',
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        paddingTop: 96,
+      }}
+    >
+      <div className="dotgrid" />
+      <div className="blob blob-a" style={{ top: '-200px', left: '-120px' }} />
+      <div className="blob blob-b" style={{ top: '-80px', right: '-160px' }} />
+
+      <Link
+        href="/"
+        className="nav-logo"
+        style={{ marginBottom: 32, position: 'relative', zIndex: 1 }}
+      >
+        <Logo size={28} />
+        <span className="mono" style={{ fontSize: 18, fontWeight: 600 }}>
+          swiftsign
+        </span>
+      </Link>
+
+      <div
+        className="install-card"
+        style={{
+          width: '100%',
+          maxWidth: 420,
+          padding: 28,
+          position: 'relative',
+          zIndex: 1,
+          textAlign: 'center',
+        }}
+      >
+        <div className="eyebrow" style={{ color: 'var(--success)', marginBottom: 12 }}>
+          Check your email
         </div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">Check your email</h2>
-        <p className="text-sm text-gray-500">
-          A sign-in link has been sent to your email address. Click the link to access your dashboard.
+        <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', margin: '0 0 10px' }}>
+          Link sent.
+        </h2>
+        <p style={{ color: 'var(--ink-3)', fontSize: 14 }}>
+          A sign-in link is on the way. Click it to access your dashboard. The link expires in 15
+          minutes.
+        </p>
+        <p
+          className="mono"
+          style={{ color: 'var(--ink-4)', fontSize: 12, marginTop: 18 }}
+        >
+          # didn&apos;t arrive? check your spam folder, or{' '}
+          <Link href="/dashboard/login" style={{ color: 'var(--accent)' }}>
+            try again
+          </Link>
+          .
         </p>
       </div>
     </div>
