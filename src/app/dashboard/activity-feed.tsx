@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { ArrowRight, Check, Seal, Terminal } from '@/components/landing/icons';
 
 type ActivityEvent = {
   id: string;
@@ -37,7 +38,7 @@ export function ActivityFeed({ initial }: { initial: ActivityEvent[] }) {
         const data: { events: ActivityEvent[] } = await res.json();
         if (!cancelled) setEvents(data.events);
       } catch {
-        // network blip — keep the existing rows on screen
+        // network blip; keep the existing rows on screen
       }
     }
 
@@ -79,15 +80,18 @@ export function ActivityFeed({ initial }: { initial: ActivityEvent[] }) {
             <span>live</span>
           </span>
           <span className="term-spacer" />
-          <span className="term-model mono">polling 5s</span>
+          <span className="term-model mono">
+            <span className="activity-pulse" /> polling 5s
+          </span>
         </div>
         <div className="term-body">
           {events.length === 0 ? (
-            <div className="activity-empty"># waiting for your first envelope event…</div>
+            <div className="activity-empty">
+              # waiting for your first envelope. once your agent sends one, the
+              event lands here in real time.
+            </div>
           ) : (
-            events.map((e) => (
-              <ActivityRow key={e.id} event={e} now={now} />
-            ))
+            events.map((e) => <ActivityRow key={e.id} event={e} now={now} />)
           )}
         </div>
       </div>
@@ -109,39 +113,60 @@ function ActivityRow({ event, now }: { event: ActivityEvent; now: number }) {
   );
 }
 
+// Small colored dot for events without a clear SVG mapping (declined /
+// voided / bounced). Keeps width consistent with the SVG icons (14px box).
+function Dot({ color }: { color: string }) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        background: color,
+      }}
+      aria-hidden
+    />
+  );
+}
+
 function renderLine(e: ActivityEvent): {
-  icon: string;
+  icon: ReactNode;
   iconClass: string;
-  line: React.ReactNode;
+  line: ReactNode;
 } {
   const who = e.actorName || e.actorEmail || 'someone';
   const subject = e.envelopeSubject;
 
   switch (e.event) {
     case 'ENVELOPE_CREATED':
-      return { icon: '+', iconClass: 'sent', line: `created envelope “${subject}”` };
+      return { icon: <ArrowRight />, iconClass: 'sent', line: `created envelope “${subject}”` };
     case 'ENVELOPE_SENT':
-      return { icon: '→', iconClass: 'sent', line: `sent envelope “${subject}”` };
+      return { icon: <ArrowRight />, iconClass: 'sent', line: `sent envelope “${subject}”` };
     case 'DOCUMENT_VIEWED':
-      return { icon: '👁', iconClass: 'viewed', line: `${who} opened “${subject}”` };
+      return { icon: <Terminal />, iconClass: 'viewed', line: `${who} opened “${subject}”` };
     case 'ESIGN_CONSENT_ACCEPTED':
-      return { icon: '✓', iconClass: 'viewed', line: `${who} accepted ESIGN consent on “${subject}”` };
+      return { icon: <Check />, iconClass: 'viewed', line: `${who} accepted ESIGN consent on “${subject}”` };
     case 'FIELD_COMPLETED':
-      return { icon: '·', iconClass: 'viewed', line: `${who} filled a field on “${subject}”` };
+      return { icon: <Check />, iconClass: 'viewed', line: `${who} filled a field on “${subject}”` };
     case 'RECIPIENT_SIGNED':
-      return { icon: '✓', iconClass: 'signed', line: `${who} signed “${subject}”` };
+      return { icon: <Check />, iconClass: 'signed', line: `${who} signed “${subject}”` };
     case 'ENVELOPE_COMPLETED':
-      return { icon: '✓', iconClass: 'completed', line: `“${subject}” is sealed` };
+      return { icon: <Seal />, iconClass: 'completed', line: `“${subject}” is sealed` };
     case 'ENVELOPE_DECLINED':
-      return { icon: '✗', iconClass: 'declined', line: `${who} declined “${subject}”` };
+      return { icon: <Dot color="#f87171" />, iconClass: 'declined', line: `${who} declined “${subject}”` };
     case 'ENVELOPE_VOIDED':
-      return { icon: '⊘', iconClass: 'voided', line: `voided “${subject}”` };
+      return { icon: <Dot color="#fbbf24" />, iconClass: 'voided', line: `voided “${subject}”` };
     case 'EMAIL_SENT':
-      return { icon: '✉', iconClass: 'sent', line: `email sent for “${subject}”` };
+      return { icon: <ArrowRight />, iconClass: 'sent', line: `email sent for “${subject}”` };
     case 'EMAIL_BOUNCED':
-      return { icon: '!', iconClass: 'declined', line: `email bounced for “${subject}”` };
+      return { icon: <Dot color="#f87171" />, iconClass: 'declined', line: `email bounced for “${subject}”` };
     default:
-      return { icon: '·', iconClass: 'viewed', line: `${e.event.toLowerCase().replace(/_/g, ' ')} — “${subject}”` };
+      return {
+        icon: <Dot color="rgba(255,255,255,0.4)" />,
+        iconClass: 'viewed',
+        line: `${e.event.toLowerCase().replace(/_/g, ' ')} on “${subject}”`,
+      };
   }
 }
 

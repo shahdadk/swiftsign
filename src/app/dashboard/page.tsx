@@ -220,7 +220,7 @@ export default async function DashboardPage() {
 
           {envelopes.length === 0 ? (
             <div className="env-empty">
-              <div># no envelopes yet</div>
+              <div># your envelopes will show up here</div>
               <div style={{ marginTop: 6 }}>
                 <span>send one with Claude Code using the prompt above.</span>
               </div>
