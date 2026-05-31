@@ -41,22 +41,19 @@ export default function VerifyPage() {
           textAlign: 'center',
         }}
       >
-        <div className="eyebrow" style={{ color: 'var(--success)', marginBottom: 12 }}>
-          Check your email
-        </div>
         <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', margin: '0 0 10px' }}>
-          Link sent.
+          Check your email.
         </h2>
         <p style={{ color: 'var(--ink-3)', fontSize: 14 }}>
           A sign-in link is on the way. Click it to access your dashboard. The link expires in 15
           minutes.
         </p>
-        <p
-          className="mono"
-          style={{ color: 'var(--ink-4)', fontSize: 12, marginTop: 18 }}
-        >
-          # didn&apos;t arrive? check your spam folder, or{' '}
-          <Link href="/dashboard/login" style={{ color: 'var(--accent)' }}>
+        <p style={{ color: 'var(--ink-4)', fontSize: 12.5, marginTop: 16 }}>
+          Didn&apos;t arrive? Check your spam folder, or{' '}
+          <Link
+            href="/dashboard/login"
+            style={{ color: 'var(--accent)', textDecoration: 'underline' }}
+          >
             try again
           </Link>
           .

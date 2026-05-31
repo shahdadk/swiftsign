@@ -70,12 +70,6 @@ export default function LoginPage() {
       >
         {sent ? (
           <>
-            <div
-              className="eyebrow"
-              style={{ color: 'var(--success)', marginBottom: 12 }}
-            >
-              Check your email
-            </div>
             <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', margin: '0 0 10px' }}>
               Link sent.
             </h2>
@@ -87,10 +81,9 @@ export default function LoginPage() {
               . Click it to continue. The link expires in 15 minutes.
             </p>
             <p
-              className="mono"
-              style={{ color: 'var(--ink-4)', fontSize: 12, marginTop: 18 }}
+              style={{ color: 'var(--ink-4)', fontSize: 12.5, marginTop: 16 }}
             >
-              # didn&apos;t arrive? check spam, or{' '}
+              Didn&apos;t arrive? Check spam, or{' '}
               <button
                 type="button"
                 onClick={() => {
@@ -114,9 +107,6 @@ export default function LoginPage() {
           </>
         ) : (
           <>
-            <div className="eyebrow" style={{ marginBottom: 12 }}>
-              Sign in
-            </div>
             <h2 style={{ fontSize: 24, fontWeight: 600, color: 'var(--ink)', margin: '0 0 8px' }}>
               Get a magic link.
             </h2>
@@ -127,8 +117,14 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit}>
               <label
                 htmlFor="login-email"
-                className="eyebrow"
-                style={{ display: 'block', marginBottom: 6 }}
+                className="mono"
+                style={{
+                  display: 'block',
+                  marginBottom: 6,
+                  fontSize: 12,
+                  color: 'var(--ink-3)',
+                  letterSpacing: '0.02em',
+                }}
               >
                 Email
               </label>
@@ -179,16 +175,15 @@ export default function LoginPage() {
             </form>
 
             <p
-              className="mono"
-              style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 18, textAlign: 'center' }}
+              style={{ fontSize: 11.5, color: 'var(--ink-4)', marginTop: 16, textAlign: 'center' }}
             >
-              by continuing you agree to our{' '}
-              <Link href="/legal/terms" style={{ color: 'var(--ink-3)' }}>
-                terms
+              By continuing you agree to our{' '}
+              <Link href="/legal/terms" style={{ color: 'var(--ink-3)', textDecoration: 'underline' }}>
+                Terms
               </Link>{' '}
               and{' '}
-              <Link href="/legal/privacy" style={{ color: 'var(--ink-3)' }}>
-                privacy policy
+              <Link href="/legal/privacy" style={{ color: 'var(--ink-3)', textDecoration: 'underline' }}>
+                Privacy Policy
               </Link>
               .
             </p>

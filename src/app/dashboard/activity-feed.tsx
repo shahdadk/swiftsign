@@ -87,8 +87,7 @@ export function ActivityFeed({ initial }: { initial: ActivityEvent[] }) {
         <div className="term-body">
           {events.length === 0 ? (
             <div className="activity-empty">
-              # waiting for your first envelope. once your agent sends one, the
-              event lands here in real time.
+              Waiting for your first envelope. Once it&apos;s sent, events land here in real time.
             </div>
           ) : (
             events.map((e) => <ActivityRow key={e.id} event={e} now={now} />)
