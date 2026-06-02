@@ -1,13 +1,19 @@
-import { createCanvas, type Canvas, DOMMatrix, DOMPoint, ImageData } from 'canvas';
+import { createCanvas, type Canvas } from 'canvas';
+import * as napiCanvas from '@napi-rs/canvas';
 
-// pdfjs-dist v5 references browser globals (DOMMatrix, DOMPoint, ImageData)
-// even in the legacy build. Polyfill from node-canvas BEFORE the dynamic
-// import so the worker setup in pdfjs sees them.
+// pdfjs-dist v5 references browser globals (DOMMatrix, DOMPoint, DOMRect,
+// ImageData, Path2D) even in the legacy build, and uses Path2D when actually
+// rendering page content. node-canvas v3 omits Path2D + DOMRect, so we pull
+// every class from @napi-rs/canvas which exports the complete set. Hoist them
+// to globalThis BEFORE the dynamic pdfjs import.
 function polyfillBrowserGlobals() {
   const g = globalThis as Record<string, unknown>;
-  if (typeof g.DOMMatrix === 'undefined') g.DOMMatrix = DOMMatrix;
-  if (typeof g.DOMPoint === 'undefined') g.DOMPoint = DOMPoint;
-  if (typeof g.ImageData === 'undefined') g.ImageData = ImageData;
+  const c = napiCanvas as unknown as Record<string, unknown>;
+  for (const name of ['DOMMatrix', 'DOMPoint', 'DOMRect', 'ImageData', 'Path2D']) {
+    if (typeof g[name] === 'undefined' && typeof c[name] !== 'undefined') {
+      g[name] = c[name];
+    }
+  }
 }
 
 // pdfjs-dist v5 legacy build for Node.js
