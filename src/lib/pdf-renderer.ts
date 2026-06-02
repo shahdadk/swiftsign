@@ -1,11 +1,22 @@
-import { createCanvas, type Canvas } from 'canvas';
+import { createCanvas, type Canvas, DOMMatrix, DOMPoint, ImageData } from 'canvas';
 
-// pdfjs-dist v5 legacy build for Node.js (no DOM dependencies)
+// pdfjs-dist v5 references browser globals (DOMMatrix, DOMPoint, ImageData)
+// even in the legacy build. Polyfill from node-canvas BEFORE the dynamic
+// import so the worker setup in pdfjs sees them.
+function polyfillBrowserGlobals() {
+  const g = globalThis as Record<string, unknown>;
+  if (typeof g.DOMMatrix === 'undefined') g.DOMMatrix = DOMMatrix;
+  if (typeof g.DOMPoint === 'undefined') g.DOMPoint = DOMPoint;
+  if (typeof g.ImageData === 'undefined') g.ImageData = ImageData;
+}
+
+// pdfjs-dist v5 legacy build for Node.js
 // Loaded lazily via dynamic import since it's ESM-only
 type PdfjsLib = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
 let pdfjsLibCache: PdfjsLib | null = null;
 async function getPdfjsLib(): Promise<PdfjsLib> {
   if (pdfjsLibCache) return pdfjsLibCache;
+  polyfillBrowserGlobals();
   pdfjsLibCache = await import('pdfjs-dist/legacy/build/pdf.mjs');
   return pdfjsLibCache;
 }
