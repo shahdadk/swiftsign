@@ -152,17 +152,30 @@ export default async function SignPage({ params, searchParams }: SignPageProps) 
     }
   }
 
-  // Check for saved signature adoption
-  const savedAdoption = await prisma.signatureAdoption.findUnique({
-    where: { email_name: { email: recipient.email, name: recipient.name } },
-  });
+  // Check for saved signature adoption (convenience only — must not block the
+  // signer if it fails).
+  const savedAdoption = await prisma.signatureAdoption
+    .findUnique({
+      where: { email_name: { email: recipient.email, name: recipient.name } },
+    })
+    .catch((err) => {
+      logger.error(err, { op: "sign-page savedAdoption", envelopeId: envelope.id });
+      return null;
+    });
 
   // ESIGN gate: until the signer has accepted the disclosure, withhold all
   // document data and page-image keys from the server payload so the doc can't
   // be pulled pre-consent. Surface the active disclosure for the consent step.
   const needsConsent = recipient.consentedAt === null;
 
-  const disclosure = needsConsent ? await getActiveDisclosure() : null;
+  // Best-effort: a failed disclosure fetch must not 500 the signer. The form
+  // already renders with a null disclosure.
+  const disclosure = needsConsent
+    ? await getActiveDisclosure().catch((err) => {
+        logger.error(err, { op: "sign-page disclosure", envelopeId: envelope.id });
+        return null;
+      })
+    : null;
 
   // Prepare data for client component — empty until consent exists.
   const documents = needsConsent
