@@ -1,6 +1,6 @@
 {
   "name": "swiftsign-mcp",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "SwiftSign MCP server for Claude Code — send documents for e-signature",
   "bin": {
     "swiftsign-mcp": "./dist/index.js"
@@ -18,7 +18,13 @@
     "build": "NODE_OPTIONS=--max-old-space-size=8192 tsc",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["mcp", "e-signature", "docusign", "claude-code", "swiftsign"],
+  "keywords": [
+    "mcp",
+    "e-signature",
+    "docusign",
+    "claude-code",
+    "swiftsign"
+  ],
   "author": "SwiftSign <hello@swiftsign.ca>",
   "license": "MIT",
   "homepage": "https://swiftsign.ca",
@@ -37,5 +43,6 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.0.0"
-  }
+  },
+  "mcpName": "ca.swiftsign/mcp"
 }
