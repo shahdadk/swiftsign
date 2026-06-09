@@ -4,9 +4,9 @@ The `production-hardening` branch makes the code enterprise-grade. These steps a
 
 ## Critical (security) — do first
 
-1. **Rotate the leaked API key + purge git history.** `sk_live_shahdad_swiftsign_2026` was committed historically (working-tree copies are already scrubbed). Treat it as burned:
+1. **Rotate the leaked API key + purge git history.** `sk_live_ROTATED_REDACTED` was committed historically (working-tree copies are already scrubbed). Treat it as burned:
    - Rotate: issue a fresh key (dashboard → Settings, or run the backfill which preserves existing keys — but the old literal must be revoked). Update `.natalie/.secrets.env` (`SWIFTSIGN_API_KEY`) and anything using it.
-   - Purge from history (irreversible, force-push): on a fresh mirror clone, `git filter-repo --replace-text <(printf 'sk_live_shahdad_swiftsign_2026==>REDACTED')`, then `git push --force --all && git push --force --tags`. Every other clone must re-clone. (Note: GitHub may cache; rotation is the real fix.)
+   - Purge from history (irreversible, force-push): on a fresh mirror clone, `git filter-repo --replace-text <(printf 'sk_live_ROTATED_REDACTED==>REDACTED')`, then `git push --force --all && git push --force --tags`. Every other clone must re-clone. (Note: GitHub may cache; rotation is the real fix.)
 2. **`sudo chown -R 501:20 ~/.npm`** — the npm content cache is corrupt (root-owned from a past `sudo npm`); it served truncated tarballs during this build. Until fixed, every `npm install` here risks re-corruption.
 
 ## Signing certificate (the one thing code can't produce)

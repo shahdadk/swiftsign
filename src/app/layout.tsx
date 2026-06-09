@@ -17,10 +17,6 @@ export const metadata: Metadata = {
   title: "SwiftSign — AI-native signatures",
   description:
     "Send, track, and seal contracts from your terminal. No drag handles. No per-seat fees.",
-  robots: {
-    index: false,
-    follow: false,
-  },
 };
 
 export default function RootLayout({

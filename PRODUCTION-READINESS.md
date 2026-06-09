@@ -22,7 +22,7 @@ There is no fundamental reason the software cannot get there. Code is not the bo
 ## Tier 0 — un-break the local repo (today, ~1-2h, pure code/ops)
 
 1. `git restore 'src/app/api/sign/[token]/route.ts' 'src/app/api/sign/[token]/decline/route.ts'` (files intact at HEAD, missing from working tree). No filter-repo/fsck needed; ODB is healthy.
-2. Rotate `sk_live_shahdad_swiftsign_2026`. Remove from `seed.ts` + the 4 scripts (read `process.env` only, no fallback literal). Purge from history (BFG / git-filter-repo).
+2. Rotate `sk_live_ROTATED_REDACTED`. Remove from `seed.ts` + the 4 scripts (read `process.env` only, no fallback literal). Purge from history (BFG / git-filter-repo).
 3. Restrict `SKIP_ENV_VALIDATION` so stub creds can never apply when `NODE_ENV==='production'`.
 
 ## Tier 1 — legally tighter in a weekend (~2-4 days AI-assisted code, + 1 procurement item ordered in parallel)

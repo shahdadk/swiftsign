@@ -9,6 +9,7 @@ import {
   Seal,
   Webhook,
 } from "./icons";
+import { SignupCta } from "./signup-cta";
 
 export function HowItWorks() {
   const steps = [
@@ -149,7 +150,7 @@ export function Pricing() {
         "Routing-order signing",
         "ESIGN/UETA/PIPEDA sealed PDFs",
       ],
-      cta: "Request access",
+      cta: "Get a free key",
       ctaClass: "btn-accent",
       featured: true,
     },
@@ -237,22 +238,17 @@ export function FinalCTA() {
           <InstallCard />
         </div>
         <div className="finalcta-actions">
-          <a
-            href="mailto:hello@swiftsign.ca?subject=SwiftSign%20beta%20access"
-            className="btn btn-primary"
-          >
-            Request access <ArrowRight />
-          </a>
+          <SignupCta />
           <Link href="/docs" className="btn btn-ghost">
             Read the docs
           </Link>
         </div>
         <div className="finalcta-meta mono">
-          <span>private beta</span>
+          <span>free during beta</span>
           <span className="sep">·</span>
-          <span>invite only</span>
+          <span>instant API key</span>
           <span className="sep">·</span>
-          <span>email us to get in</span>
+          <span>no sales call</span>
         </div>
       </div>
     </section>
