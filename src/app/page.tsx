@@ -10,7 +10,8 @@ import {
   Pricing,
 } from "@/components/landing/sections";
 import { RevealOnScroll } from "@/components/landing/reveal";
-import { ArrowRight, Shield, Terminal } from "@/components/landing/icons";
+import { Shield, Terminal } from "@/components/landing/icons";
+import { SignupCta } from "@/components/landing/signup-cta";
 
 export default function Home() {
   return (
@@ -25,7 +26,7 @@ export default function Home() {
         <div className="container hero-inner">
           <div className="kicker">
             <span className="dot" />
-            <span>Private beta · invite only</span>
+            <span>Free during beta · instant API key</span>
           </div>
 
           <h1 className="hero-h1">
@@ -45,12 +46,7 @@ export default function Home() {
           </div>
 
           <div className="hero-ctas">
-            <a
-              href="mailto:hello@swiftsign.ca?subject=SwiftSign%20beta%20access"
-              className="btn btn-primary"
-            >
-              Request access <ArrowRight />
-            </a>
+            <SignupCta />
             <a href="#demo" className="btn btn-ghost">
               <Terminal /> See the demo
             </a>

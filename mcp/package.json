@@ -1,6 +1,6 @@
 {
   "name": "swiftsign-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "SwiftSign MCP server for Claude Code — send documents for e-signature",
   "bin": {
     "swiftsign-mcp": "./dist/index.js"
@@ -30,6 +30,7 @@
     "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "typescript": "^5.0.0"
   }
 }

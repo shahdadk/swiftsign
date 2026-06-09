@@ -1,6 +1,11 @@
+import type { Metadata } from 'next'
 import { getSession } from '@/lib/auth'
 import { DashboardNav } from '@/components/dashboard-nav'
 import { billingEnabled } from '@/lib/env'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default async function DashboardLayout({
   children,
