@@ -1,5 +1,5 @@
 import { createMcpHandler, withMcpAuth } from 'mcp-handler'
-import { registerSwiftSignTools } from '../../../../mcp/src/tools'
+import { registerSwiftSignTools } from '../../../mcp/src/tools'
 import { authenticateApiKey } from '@/lib/auth'
 import { env } from '@/lib/env'
 
@@ -27,7 +27,7 @@ const handler = createMcpHandler(
     })
   },
   {},
-  { basePath: '/mcp', verboseLogs: false, maxDuration: 300 }
+  { basePath: '', verboseLogs: false, maxDuration: 300 }
 )
 
 const authedHandler = withMcpAuth(
