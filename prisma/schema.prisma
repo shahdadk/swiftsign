@@ -24,6 +24,9 @@ model User {
   tosAcceptedVersion String?
   tosAcceptedAt      DateTime?
   onboardedAt        DateTime?
+  // Funnel attribution: where the signup came from ("mcp", "site", "registry",
+  // "docs", ...). Set once at creation, never updated.
+  signupSource       String?
   envelopes        Envelope[]
   accounts         Account[]
   sessions         Session[]
