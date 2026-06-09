@@ -1,10 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useState, useCallback, useEffect } from "react";
-import { PdfViewer } from "./pdf-viewer";
-import { SignatureModal } from "./signature-modal";
 import { Logo } from "./landing/icons";
+
+// react-pdf and the canvas signature pad touch browser globals (DOMMatrix,
+// canvas) during render, which throws when this client component is
+// server-rendered on the /sign/[token] page. Load them client-only so the
+// signer page SSRs instead of 500ing.
+const PdfViewer = dynamic(() => import("./pdf-viewer").then((m) => m.PdfViewer), {
+  ssr: false,
+});
+const SignatureModal = dynamic(
+  () => import("./signature-modal").then((m) => m.SignatureModal),
+  { ssr: false }
+);
 
 type FieldType =
   | "SIGNATURE"
