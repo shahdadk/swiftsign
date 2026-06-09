@@ -81,7 +81,17 @@ export async function createSession(userId: string): Promise<string> {
   return sessionToken
 }
 
-export async function createMagicLink(email: string): Promise<string | null> {
+// Post-login destinations must be relative and on a known surface — this is
+// the open-redirect guard for the magic-link `next` round-trip.
+export function isSafeNextPath(next: string): boolean {
+  return (
+    next.length <= 2000 &&
+    !next.startsWith('//') &&
+    (next.startsWith('/oauth/authorize') || next.startsWith('/dashboard'))
+  )
+}
+
+export async function createMagicLink(email: string, next?: string): Promise<string | null> {
   const token = crypto.randomBytes(32).toString('hex')
   const expires = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
 
@@ -93,7 +103,9 @@ export async function createMagicLink(email: string): Promise<string | null> {
     },
   })
 
-  return `${env.NEXT_PUBLIC_APP_URL}/api/auth/verify?token=${token}&email=${encodeURIComponent(email)}`
+  const nextParam =
+    next && isSafeNextPath(next) ? `&next=${encodeURIComponent(next)}` : ''
+  return `${env.NEXT_PUBLIC_APP_URL}/api/auth/verify?token=${token}&email=${encodeURIComponent(email)}${nextParam}`
 }
 
 export async function verifyMagicLink(token: string, email: string): Promise<User | null> {

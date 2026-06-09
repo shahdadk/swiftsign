@@ -6,7 +6,10 @@ import { logger } from '@/lib/logger'
 import { authSendLimiter, clientIp, rateLimitHeaders } from '@/lib/rate-limit'
 import { isEmailAllowed } from '@/lib/env'
 
-const Body = z.object({ email: z.string().email() })
+const Body = z.object({
+  email: z.string().email(),
+  next: z.string().max(2000).optional(),
+})
 
 export async function POST(request: Request) {
   const ip = clientIp(request)
@@ -31,7 +34,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
-    const link = await createMagicLink(parsed.data.email)
+    const link = await createMagicLink(parsed.data.email, parsed.data.next)
     if (!link) {
       return NextResponse.json({ error: 'Failed to create link' }, { status: 500 })
     }

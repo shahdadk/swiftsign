@@ -16,10 +16,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // Round-trip a validated post-login destination (e.g. the OAuth consent
+      // screen) through the magic link.
+      const next = new URLSearchParams(window.location.search).get('next');
       const res = await fetch('/api/auth/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, ...(next ? { next } : {}) }),
       });
 
       if (!res.ok) {

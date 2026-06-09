@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { verifyMagicLink, createSession } from '@/lib/auth'
+import { verifyMagicLink, createSession, isSafeNextPath } from '@/lib/auth'
 import { cookies } from 'next/headers'
 import { env } from '@/lib/env'
 import { authVerifyLimiter, clientIp, rateLimitHeaders } from '@/lib/rate-limit'
@@ -38,5 +38,7 @@ export async function GET(request: Request) {
     path: '/',
   })
 
-  return NextResponse.redirect(new URL('/dashboard', request.url))
+  const next = url.searchParams.get('next')
+  const dest = next && isSafeNextPath(next) ? next : '/dashboard'
+  return NextResponse.redirect(new URL(dest, request.url))
 }

@@ -103,6 +103,19 @@ export const signIpLimiter = safeLimit(
   { capacity: 10, refillPerSec: 0.5 }
 )
 
+// OAuth dynamic client registration — open by design, so throttle per IP.
+export const dcrLimiter = safeLimit(
+  new Ratelimit({
+    redis: redis(),
+    limiter: Ratelimit.slidingWindow(10, '1 h'),
+    prefix: 'rl:oauth-dcr',
+    analytics: false,
+  }),
+  '',
+  'oauthDcr',
+  { capacity: 5, refillPerSec: 5 / 3600 }
+)
+
 // Anti-abuse: accounts younger than 7 days get a live-send velocity cap.
 // Instant no-KYC keys + e-signature email is phishing infrastructure if left
 // open; one spam wave blacklists the sending domain for every customer.

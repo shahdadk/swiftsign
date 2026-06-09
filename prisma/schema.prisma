@@ -447,6 +447,50 @@ model TemplateField {
   options            Json?
 }
 
+// --- OAuth 2.1 for the hosted MCP endpoint (one-click consent in MCP clients).
+// Access tokens are NOT stored here: they are ApiKey rows (sk_oat_ prefix,
+// 24h expiry) so the whole existing auth/revocation/dashboard path applies.
+
+// Dynamically-registered public clients (RFC 7591). No client secrets.
+model OAuthClient {
+  id                      String   @id @default(cuid())
+  name                    String?
+  redirectUris            String[]
+  tokenEndpointAuthMethod String   @default("none")
+  createdAt               DateTime @default(now())
+}
+
+// Authorization codes: 10-minute TTL, single use, PKCE S256 only.
+model OAuthAuthCode {
+  id            String    @id @default(cuid())
+  codeHash      String    @unique
+  clientId      String
+  userId        String
+  redirectUri   String
+  scopes        String[]
+  codeChallenge String
+  resource      String?
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+// Rotating refresh tokens (90-day TTL). accessKeyId tracks the current
+// sk_oat_ ApiKey row so rotation can revoke the prior access token.
+model OAuthRefreshToken {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  clientId    String
+  userId      String
+  scopes      String[]
+  accessKeyId String?
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+}
+
 // Short-lived single-use entry ticket for embedded signing (drops a developer's
 // own end-user straight into the signer UI without the email round-trip).
 model EmbeddedSession {
