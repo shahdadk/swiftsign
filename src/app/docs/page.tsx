@@ -26,7 +26,7 @@ export default function DocsPage() {
           <a href="#idempotency">Idempotency</a>
           <a href="#pagination">Pagination</a>
           <a href="#errors">Error codes</a>
-          <a href="/reference">API explorer</a>
+          <Link href="/reference">API explorer</Link>
         </aside>
 
         <main className="docs-main">
