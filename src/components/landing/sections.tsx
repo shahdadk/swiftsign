@@ -138,38 +138,38 @@ compliance: ESIGN, UETA, PIPEDA`,
 export function Pricing() {
   const plans = [
     {
-      id: "beta",
-      name: "Beta",
+      id: "sandbox",
+      name: "Sandbox",
       price: "Free",
-      period: "while it lasts",
-      blurb: "Unlimited during the open beta.",
+      period: "forever",
+      blurb: "For building and testing agent flows.",
       features: [
-        "Unlimited envelopes",
+        "Unlimited test envelopes",
+        "Instant sk_test_ key, no account",
+        "Watermarked, non-binding sends",
         "MCP server + REST API",
         "Webhook subscriptions",
-        "Routing-order signing",
-        "ESIGN/UETA/PIPEDA sealed PDFs",
       ],
-      cta: "Get a free key",
-      ctaClass: "btn-accent",
-      featured: true,
-    },
-    {
-      id: "soon",
-      name: "Pro",
-      price: "$15",
-      period: "per month — soon",
-      blurb: "Paid plans land later this year.",
-      features: [
-        "Everything from beta",
-        "Priority support",
-        "Custom branding",
-        "Higher rate limits",
-        "Stripe Tax + invoices",
-      ],
-      cta: "Notify me",
+      cta: "Get a sandbox key",
       ctaClass: "btn-ghost",
       featured: false,
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      price: "$15",
+      period: "/mo · per workspace, flat",
+      blurb: "For production sends, per workspace.",
+      features: [
+        "Live sends, no watermark",
+        "Sealed PDFs + Certificate of Completion",
+        "Webhook subscriptions",
+        "Templates + embedded signing",
+        "Fair use: 100 envelopes a month",
+      ],
+      cta: "Upgrade from your terminal",
+      ctaClass: "btn-accent",
+      featured: true,
     },
   ];
 
@@ -178,17 +178,17 @@ export function Pricing() {
       <div className="container">
         <div className="section-head">
           <div className="eyebrow">Pricing</div>
-          <h2>Free during beta.</h2>
+          <h2>One flat price.</h2>
           <p className="section-sub">
-            We&apos;re shipping. Use it now, free, and we&apos;ll tell you before any
-            charges land. Cancel from the CLI when paid plans go live.
+            Sandbox is free forever. Pro is $15 a month per workspace, flat.
+            Your agent can initiate the upgrade from the terminal.
           </p>
         </div>
 
         <div className="pricing-grid pricing-grid-2">
           {plans.map((p) => (
             <div key={p.id} className={"price-card " + (p.featured ? "featured" : "")}>
-              {p.featured && <div className="price-badge mono">use this now</div>}
+              {p.featured && <div className="price-badge mono">live</div>}
               <div className="price-name mono">{p.name}</div>
               <div className="price-amount">
                 <span className="price-num">{p.price}</span>
@@ -215,8 +215,17 @@ export function Pricing() {
         <div className="pricing-footnote mono">
           <span>
             For reference: DocuSign Standard <b>$45/mo</b> · Adobe Acrobat Sign{" "}
-            <b>$29.99/mo</b> · per user
+            <b>$29.99/mo</b> · per user · as of June 2026
           </span>
+          <span>
+            Pro fair use: past <b>100 envelopes/mo</b>, talk to us
+          </span>
+        </div>
+
+        <div style={{ textAlign: "center", marginTop: 20 }}>
+          <Link href="/pricing" className="link-arrow">
+            See full pricing <ArrowRight />
+          </Link>
         </div>
       </div>
     </section>

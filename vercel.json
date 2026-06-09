@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/billing-sweep",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/cohort-report",
+      "schedule": "0 13 * * 1"
     }
   ]
 }

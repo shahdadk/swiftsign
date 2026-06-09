@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "ca.swiftsign/mcp",
+  "description": "Send, track, and download e-signed documents. Agent-first: mint a sandbox API key with one tool call (no account or browser), send PDFs with anchor or coordinate field placement, check status, and pull back the sealed PDF + Certificate of Completion. Live sends are confirm-gated for safety.",
+  "repository": {
+    "url": "https://github.com/shahdadk/swiftsign",
+    "source": "github",
+    "subfolder": "mcp"
+  },
+  "websiteUrl": "https://swiftsign.ca",
+  "version": "0.5.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "swiftsign-mcp",
+      "version": "0.5.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "SWIFTSIGN_API_KEY",
+          "description": "SwiftSign API key (sk_test_ sandbox or sk_live_). Optional at startup: call the swiftsign_signup tool to mint a sandbox key, then set it.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://swiftsign.ca/mcp"
+    }
+  ]
+}

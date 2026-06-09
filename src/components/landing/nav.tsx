@@ -24,7 +24,7 @@ export function NavBar() {
         </Link>
         <nav className="nav-links mono">
           <Link href="/docs">Docs</Link>
-          <a href="#pricing">Pricing</a>
+          <Link href="/pricing">Pricing</Link>
           <a href="#" className="nav-dim">
             Changelog
           </a>

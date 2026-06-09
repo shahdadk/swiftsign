@@ -29,9 +29,11 @@ export const PLANS: Record<Plan, PlanConfig> = {
     label: 'Pro',
     priceMonthlyUsd: 15,
     priceIdMonthly: env.STRIPE_PRICE_PRO_MONTHLY ?? null,
-    monthlyEnvelopeQuota: 'unlimited',
+    // Fair-use cap: flat-unlimited invites bulk-send abuse and adverse
+    // selection; 100/mo is ~10x under DocuSign list for the same money.
+    monthlyEnvelopeQuota: 100,
     features: [
-      'Unlimited envelopes',
+      '100 envelopes / month fair use',
       'Webhook subscriptions',
       'Email + audit log support',
       'Routing-order signing',
