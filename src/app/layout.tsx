@@ -19,6 +19,62 @@ export const metadata: Metadata = {
     "Send, track, and seal contracts from your terminal. No drag handles. No per-seat fees.",
 };
 
+// Structured data: Organization + SoftwareApplication with both offers
+// (free sandbox, $15/mo Pro). Server-rendered so crawlers see it in the
+// initial HTML. Shapes follow schema.org; URLs are absolute.
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://swiftsign.ca/#organization",
+      name: "SwiftSign",
+      url: "https://swiftsign.ca",
+      sameAs: [
+        "https://github.com/shahdadk/swiftsign",
+        "https://www.npmjs.com/package/swiftsign-mcp",
+        "https://pypi.org/project/swiftsign/",
+      ],
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://swiftsign.ca/#software",
+      name: "SwiftSign",
+      url: "https://swiftsign.ca",
+      description:
+        "E-signature API and MCP server for AI coding tools. Send, track, and seal documents from code or an agent, with sealed PDFs and a Certificate of Completion.",
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Web",
+      publisher: { "@id": "https://swiftsign.ca/#organization" },
+      offers: [
+        {
+          "@type": "Offer",
+          name: "Sandbox",
+          description:
+            "Free forever. Unlimited watermarked test envelopes with an instant sandbox API key.",
+          price: "0",
+          priceCurrency: "USD",
+          url: "https://swiftsign.ca/pricing",
+        },
+        {
+          "@type": "Offer",
+          name: "Pro",
+          description: "$15 per month, flat, per workspace. Live sealed sends.",
+          price: "15.00",
+          priceCurrency: "USD",
+          url: "https://swiftsign.ca/pricing",
+          priceSpecification: {
+            "@type": "UnitPriceSpecification",
+            price: "15.00",
+            priceCurrency: "USD",
+            unitText: "MONTH",
+          },
+        },
+      ],
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,7 +82,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

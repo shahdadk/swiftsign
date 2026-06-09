@@ -24,7 +24,7 @@ export function SignupCta({ label = "Get a free test key" }: { label?: string })
       const res = await fetch("/api/v1/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, source: "site" }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

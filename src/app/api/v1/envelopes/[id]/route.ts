@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { authenticateApiKey } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
+import { problem } from '@/lib/api-errors'
+import { youngLiveSendLimiter, rateLimitHeaders } from '@/lib/rate-limit'
 import { sendSigningRequest } from '@/lib/email'
 import { env } from '@/lib/env'
 import { logger } from '@/lib/logger'
@@ -118,7 +120,12 @@ interface ActionUser {
   id: string
   name: string | null
   email: string
+  createdAt: Date
 }
+
+// New-account abuse caps on LIVE dispatch (sandbox is watermarked and exempt).
+const YOUNG_ACCOUNT_DAYS = 7
+const YOUNG_MAX_RECIPIENTS = 10
 
 async function handleSend(envelopeId: string, user: ActionUser) {
   const envelope = await prisma.envelope.findUnique({
@@ -150,6 +157,22 @@ async function handleSend(envelopeId: string, user: ActionUser) {
       { error: 'Envelope has no signers' },
       { status: 400 }
     )
+  }
+
+  const accountAgeMs = Date.now() - user.createdAt.getTime()
+  if (envelope.livemode && accountAgeMs < YOUNG_ACCOUNT_DAYS * 86_400_000) {
+    if (envelope.recipients.length > YOUNG_MAX_RECIPIENTS) {
+      return problem('forbidden', {
+        detail: `Accounts in their first ${YOUNG_ACCOUNT_DAYS} days are limited to ${YOUNG_MAX_RECIPIENTS} recipients per live envelope. This limit lifts automatically.`,
+      })
+    }
+    const rl = await youngLiveSendLimiter.limit(user.id)
+    if (!rl.success) {
+      return problem('rate_limited', {
+        detail: `Accounts in their first ${YOUNG_ACCOUNT_DAYS} days are limited to ${rl.limit} live envelope sends per 24h. This limit lifts automatically.`,
+        headers: rateLimitHeaders(rl),
+      })
+    }
   }
 
   // Determine first routing order

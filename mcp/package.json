@@ -1,20 +1,30 @@
 {
   "name": "swiftsign-mcp",
-  "version": "0.4.0",
+  "version": "0.5.1",
   "description": "SwiftSign MCP server for Claude Code — send documents for e-signature",
   "bin": {
     "swiftsign-mcp": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./tools": "./dist/tools.js"
+  },
   "files": [
     "dist",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "NODE_OPTIONS=--max-old-space-size=8192 tsc",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["mcp", "e-signature", "docusign", "claude-code", "swiftsign"],
+  "keywords": [
+    "mcp",
+    "e-signature",
+    "docusign",
+    "claude-code",
+    "swiftsign"
+  ],
   "author": "SwiftSign <hello@swiftsign.ca>",
   "license": "MIT",
   "homepage": "https://swiftsign.ca",
@@ -27,10 +37,12 @@
     "url": "https://github.com/shahdadk/swiftsign/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.0.0"
-  }
+  },
+  "mcpName": "ca.swiftsign/mcp"
 }

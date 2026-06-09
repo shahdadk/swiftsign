@@ -1527,6 +1527,16 @@ p { color: var(--ink-3); line-height: 1.55; margin: 0; }
   50%      { opacity: 1; }
 }
 
+.pricing-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 720px) {
+  .pricing-grid-2 { grid-template-columns: 1fr; }
+}
+
 /* ── Self-serve signup widget (replaces the Request-access mailto gate) ── */
 .signup-form {
   display: flex;

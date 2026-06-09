@@ -17,6 +17,12 @@ export const dynamic = 'force-dynamic'
 const Body = z.object({
   email: z.string().email(),
   name: z.string().optional(),
+  source: z
+    .string()
+    .trim()
+    .max(40)
+    .regex(/^[a-z0-9_-]+$/i)
+    .optional(),
 })
 
 export async function POST(request: Request) {
@@ -35,6 +41,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })
   }
   const email = parsed.data.email.trim().toLowerCase()
+  // Funnel attribution: body field wins; ?source= covers curl/docs links.
+  const querySource = new URL(request.url).searchParams.get('source')
+  const source =
+    parsed.data.source ??
+    (querySource && /^[a-z0-9_-]{1,40}$/i.test(querySource) ? querySource : null)
 
   try {
     // Never mint a key for an already-claimed email — that would be account
@@ -56,13 +67,14 @@ export async function POST(request: Request) {
         name: parsed.data.name ?? null,
         tosAcceptedVersion: TOS_VERSION,
         tosAcceptedAt: new Date(),
+        signupSource: source,
       },
     })
     const { secret, record } = await createApiKey(user.id, {
       name: 'Default',
       mode: 'TEST',
     })
-    logger.info('signup', { userId: user.id })
+    logger.info('signup', { userId: user.id, source })
 
     return NextResponse.json(
       {
