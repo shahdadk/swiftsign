@@ -26,7 +26,7 @@ const handler = createMcpHandler(
       allowSignup: false,
     })
   },
-  {},
+  { serverInfo: { name: 'swiftsign', version: '0.5.1' } },
   { basePath: '', verboseLogs: false, maxDuration: 300 }
 )
 
