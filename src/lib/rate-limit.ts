@@ -103,6 +103,21 @@ export const signIpLimiter = safeLimit(
   { capacity: 10, refillPerSec: 0.5 }
 )
 
+// Anti-abuse: accounts younger than 7 days get a live-send velocity cap.
+// Instant no-KYC keys + e-signature email is phishing infrastructure if left
+// open; one spam wave blacklists the sending domain for every customer.
+export const youngLiveSendLimiter = safeLimit(
+  new Ratelimit({
+    redis: redis(),
+    limiter: Ratelimit.slidingWindow(10, '24 h'),
+    prefix: 'rl:young-live-send',
+    analytics: false,
+  }),
+  '',
+  'youngLiveSend',
+  { capacity: 3, refillPerSec: 3 / 86_400 }
+)
+
 // Per-IP signup-velocity limiter — caps new-account creation from one IP now
 // that signup is public.
 export const signupVelocityLimiter = safeLimit(
