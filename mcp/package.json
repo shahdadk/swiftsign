@@ -16,7 +16,8 @@
   ],
   "scripts": {
     "build": "NODE_OPTIONS=--max-old-space-size=8192 tsc",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "node --test dist/__tests__/"
   },
   "keywords": [
     "mcp",
