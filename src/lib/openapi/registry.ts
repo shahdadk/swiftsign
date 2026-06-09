@@ -680,6 +680,67 @@ registry.registerPath({
 })
 
 // =====================================================================
+// Webhooks (OpenAPI 3.1 top-level `webhooks`)
+// =====================================================================
+
+// Outbound event envelope. Body is signed: `SwiftSign-Signature: t=<unix>,v1=<hex>`
+// where v1 = HMAC-SHA256(secret, `${t}.${rawBody}`). Verify on the raw bytes
+// before parsing. Delivery retries up to 6 times (1m/5m/30m/2h/12h/24h backoff);
+// any 2xx acknowledges.
+const WebhookEventEnvelope = registry.register(
+  'WebhookEvent',
+  z
+    .object({
+      id: z.string().openapi({ example: 'evt_8c2f9a1b3d4e5f6071829304' }),
+      type: z
+        .enum([
+          'envelope.sent',
+          'envelope.viewed',
+          'envelope.signed',
+          'envelope.completed',
+          'envelope.declined',
+          'envelope.voided',
+        ])
+        .openapi({ example: 'envelope.completed' }),
+      createdAt: z.string().datetime().openapi({ example: '2026-06-09T17:00:00.000Z' }),
+      data: z
+        .record(z.string(), z.unknown())
+        .openapi({ description: 'Event payload; always includes envelopeId.' }),
+    })
+    .openapi('WebhookEvent', {
+      description:
+        'Envelope for every webhook delivery. Signed with the SwiftSign-Signature header ' +
+        '(t=<unix>,v1=<HMAC-SHA256 hex over `${t}.${rawBody}`>). Respond 2xx to acknowledge.',
+    })
+)
+
+const WEBHOOK_EVENTS: Array<{ name: string; when: string }> = [
+  { name: 'envelope.sent', when: 'An envelope was dispatched to its first signer batch.' },
+  { name: 'envelope.viewed', when: 'A signer opened their signing link.' },
+  { name: 'envelope.signed', when: 'A signer completed their fields (more signers may remain).' },
+  { name: 'envelope.completed', when: 'Every signer finished; sealed PDFs + Certificate are ready to download.' },
+  { name: 'envelope.declined', when: 'A signer declined to sign.' },
+  { name: 'envelope.voided', when: 'The sender voided the envelope.' },
+]
+
+for (const evt of WEBHOOK_EVENTS) {
+  registry.registerWebhook({
+    method: 'post',
+    path: evt.name,
+    summary: evt.when,
+    description:
+      `Sent to your subscribed endpoint when ${evt.when.charAt(0).toLowerCase()}${evt.when.slice(1)} ` +
+      'Verify the SwiftSign-Signature header before trusting the body.',
+    request: {
+      body: { content: { 'application/json': { schema: WebhookEventEnvelope } } },
+    },
+    responses: {
+      200: { description: 'Acknowledged. Any 2xx stops retries.' },
+    },
+  })
+}
+
+// =====================================================================
 // Generate
 // =====================================================================
 
