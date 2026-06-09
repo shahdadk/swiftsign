@@ -5,6 +5,8 @@ import { SigningForm } from "@/components/signing-form";
 import { emit } from "@/lib/webhooks";
 import { getSession } from "@/lib/auth";
 import { getActiveDisclosure } from "@/lib/consent";
+import { logAudit } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 
 interface SignPageProps {
   params: Promise<{ token: string }>;
@@ -123,30 +125,30 @@ export default async function SignPage({ params, searchParams }: SignPageProps) 
   }
 
   if (!isPreview) {
-    // Log document viewed (track first-view for the envelope.viewed webhook)
+    // View tracking is non-critical telemetry: it must NEVER block a signer
+    // from reaching the form. Best-effort, and via the hash-chained logAudit()
+    // (not a raw auditLog.create — the only such bypass in the codebase) so the
+    // DOCUMENT_VIEWED row joins the tamper-evident chain.
     const isFirstView = recipient.viewedAt === null;
-    await prisma.$transaction([
-      prisma.recipient.update({
+    try {
+      await prisma.recipient.update({
         where: { id: recipient.id },
         data: { viewedAt: recipient.viewedAt ?? new Date() },
-      }),
-      prisma.auditLog.create({
-        data: {
-          envelopeId: envelope.id,
-          event: "DOCUMENT_VIEWED",
-          actorName: recipient.name,
-          actorEmail: recipient.email,
-        },
-      }),
-    ]);
-
-    if (isFirstView) {
-      emit(envelope.userId, "envelope.viewed", {
-        envelopeId: envelope.id,
-        recipientId: recipient.id,
-        recipientEmail: recipient.email,
-        recipientName: recipient.name,
       });
+      await logAudit(envelope.id, "DOCUMENT_VIEWED", {
+        actorName: recipient.name,
+        actorEmail: recipient.email,
+      });
+      if (isFirstView) {
+        emit(envelope.userId, "envelope.viewed", {
+          envelopeId: envelope.id,
+          recipientId: recipient.id,
+          recipientEmail: recipient.email,
+          recipientName: recipient.name,
+        });
+      }
+    } catch (err) {
+      logger.error(err, { op: "sign-page view tracking", envelopeId: envelope.id });
     }
   }
 
