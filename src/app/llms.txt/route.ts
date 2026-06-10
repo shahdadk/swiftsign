@@ -7,7 +7,7 @@ const BODY = `# SwiftSign
 
 > SwiftSign is an e-signature API and MCP server built for AI coding tools. One unauthenticated call (POST https://swiftsign.ca/api/v1/signup) returns an instant sk_test_ sandbox key, no account required. Sandbox is free forever with unlimited watermarked test envelopes. Pro is $15/month flat per workspace for live sends.
 
-Completed documents are sealed with a SHA-256 hash, a PAdES (PKCS#7) digital signature, and an RFC-3161 trusted timestamp, plus a Certificate of Completion recording the audit trail. Signatures are intended to be legally binding under the U.S. ESIGN Act, UETA, and Canada's PIPEDA.
+Completed documents get a SHA-256 integrity hash and a Certificate of Completion recording the full audit trail: signer identity, email, timestamp, IP address, and signature method. Signatures are intended to be legally binding under the U.S. ESIGN Act, UETA, and Canada's electronic-commerce legislation.
 
 ## Docs
 
@@ -19,9 +19,9 @@ Completed documents are sealed with a SHA-256 hash, a PAdES (PKCS#7) digital sig
 
 - Claude Code: \`claude mcp add swiftsign -- npx -y swiftsign-mcp\`
 - Any MCP-aware client (Cursor, Zed, etc.): run \`npx -y swiftsign-mcp\` as a stdio server
-- A hosted remote MCP URL is coming; use npx for now
+- Hosted remote MCP: \`claude mcp add --transport http swiftsign https://swiftsign.ca/mcp --header "Authorization: Bearer sk_..."\` (the first key comes from POST https://swiftsign.ca/api/v1/signup, not from the MCP server; OAuth is also supported)
 - [Node SDK](https://www.npmjs.com/package/swiftsign): \`npm install swiftsign\`
-- [Python SDK](https://pypi.org/project/swiftsign/): \`pip install swiftsign\`
+- Python SDK: coming to PyPI
 
 ## Pricing
 

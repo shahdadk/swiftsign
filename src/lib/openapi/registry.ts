@@ -577,6 +577,46 @@ registry.registerPath({
   },
 })
 
+// ---- GET /api/v1/envelopes/{id}/download ----
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/envelopes/{id}/download',
+  tags: ['Envelopes'],
+  summary: 'Download the sealed PDF or Certificate of Completion',
+  description:
+    'Returns the sealed document (or the Certificate of Completion when certificate=true) for a COMPLETED envelope. Authenticate with the Bearer API key (envelopes:read) or a recipient signing token via ?token.',
+  security: SECURITY,
+  request: {
+    params: z.object({ id: z.string().openapi({ param: { name: 'id', in: 'path' } }) }),
+    query: z.object({
+      doc: z.coerce
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .openapi({ param: { name: 'doc', in: 'query' }, description: 'Document index to download (default 0).' }),
+      certificate: z
+        .enum(['true', 'false'])
+        .optional()
+        .openapi({ param: { name: 'certificate', in: 'query' }, description: 'If "true", download the Certificate of Completion instead of the document.' }),
+      token: z
+        .string()
+        .optional()
+        .openapi({ param: { name: 'token', in: 'query' }, description: 'Recipient signing token, as an alternative to the API key.' }),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'The sealed PDF (application/pdf).',
+      content: { 'application/pdf': { schema: z.string().openapi({ format: 'binary' }) } },
+    },
+    400: problemResponse('Invalid document index.'),
+    401: problemResponse('Missing or invalid API key or signing token.'),
+    404: problemResponse('Envelope, document, or sealed file not found.'),
+    409: problemResponse('Envelope is not COMPLETED yet.'),
+  },
+})
+
 // ---- POST /api/v1/templates ----
 registry.registerPath({
   method: 'post',
