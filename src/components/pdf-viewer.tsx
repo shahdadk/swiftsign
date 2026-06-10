@@ -116,7 +116,7 @@ export function PdfViewer({
                   pageNumber={pageNum}
                   width={containerWidth}
                   renderAnnotationLayer={false}
-                  renderTextLayer={false}
+                  renderTextLayer={true}
                 />
                 {pageFields.map((field) => {
                   const isFilled = !!field.value;
@@ -144,7 +144,7 @@ export function PdfViewer({
                           top: `${field.y}%`,
                           width: `${field.width}%`,
                           height: `${field.height}%`,
-                          minHeight: 22,
+                          minHeight: 44,
                         }}
                       >
                         <input
@@ -177,7 +177,7 @@ export function PdfViewer({
                           top: `${field.y}%`,
                           width: `${field.width}%`,
                           height: `${field.height}%`,
-                          minHeight: 22,
+                          minHeight: 44,
                         }}
                       >
                         <select
@@ -218,14 +218,14 @@ export function PdfViewer({
                           top: `${field.y}%`,
                           width: `${field.width}%`,
                           height: `${field.height}%`,
-                          minHeight: 22,
+                          minHeight: 44,
                         }}
                       >
                         <div className="flex flex-col gap-0.5 px-1.5 py-1">
                           {opts.map((opt) => (
                             <label
                               key={opt}
-                              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-900 font-medium cursor-pointer"
+                              className="flex items-center gap-1.5 text-xs text-gray-900 font-medium cursor-pointer"
                             >
                               <input
                                 type="radio"
@@ -262,15 +262,15 @@ export function PdfViewer({
                           top: `${field.y}%`,
                           width: `${field.width}%`,
                           height: `${field.height}%`,
-                          minHeight: 22,
+                          minHeight: 44,
                         }}
                       >
                         {isFilled ? (
-                          <span className="text-[10px] sm:text-xs text-gray-900 font-medium truncate w-full">
+                          <span className="text-xs text-gray-900 font-medium truncate w-full">
                             📎 {field.value}
                           </span>
                         ) : (
-                          <label className="text-[10px] sm:text-xs text-amber-700 font-medium cursor-pointer truncate w-full">
+                          <label className="text-xs text-amber-700 font-medium cursor-pointer truncate w-full">
                             {FIELD_LABELS.ATTACHMENT}
                             {field.required ? " *" : ""}
                             <input
@@ -304,11 +304,12 @@ export function PdfViewer({
                         top: `${field.y}%`,
                         width: `${field.width}%`,
                         height: `${field.height}%`,
-                        minHeight: 20,
+                        minHeight: 44,
+                        minWidth: 44,
                       }}
                     >
                       {!isFilled && (
-                        <span className="flex items-center gap-1 text-amber-700 text-[10px] sm:text-xs font-medium select-none px-1.5 truncate">
+                        <span className="flex items-center gap-1 text-amber-700 text-xs font-medium select-none px-1.5 truncate">
                           {field.type === "SIGNATURE" && (
                             <svg
                               className="w-4 h-4 flex-shrink-0"

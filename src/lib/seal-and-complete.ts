@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import { prisma } from './db'
-import { downloadPdf, uploadPdf } from './storage'
+import { downloadPdf, uploadPdf, getSignedUrl } from './storage'
 import { sendCompleted } from './email'
 import { logAudit } from './audit'
 import { sealDocument, type SealField } from './seal'
@@ -223,12 +223,20 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
     },
   })
 
-  // 7. Send completion emails to all recipients + sender with the sealed
-  // PDFs + certificate attached. Recipients get the full signed package
-  // in their inbox without clicking through links.
+  // 7. Send completion emails to all recipients + sender. The SIGNED PDF is the
+  // deliverable — attached inline when small, or as a 7-day signed download link
+  // when the total would exceed Resend's ~40 MB payload cap (which otherwise
+  // makes the whole email silently fail to send). The Certificate of Completion
+  // is offered as a download link, not an inline attachment.
   const sealedAttachments: { filename: string; content: Buffer }[] = []
   for (const doc of envelope.documents) {
-    if (!doc.signedKey) continue
+    if (!doc.signedKey) {
+      logger.warn('completion email: document has no signedKey, skipping', {
+        op: 'sendCompleted-loadAttachment',
+        docName: doc.name,
+      })
+      continue
+    }
     try {
       const buf = await downloadPdf(doc.signedKey)
       sealedAttachments.push({ filename: doc.name, content: buf })
@@ -240,15 +248,30 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
     }
   }
 
-  let certAttachment: { filename: string; content: Buffer } | null = null
+  // Resend caps total payload at ~40 MB; base64 inflates ~33%, so guard at 25 MB
+  // of raw bytes and fall back to signed download links over the threshold.
+  const ATTACH_LIMIT = 25 * 1024 * 1024
+  const totalBytes = sealedAttachments.reduce((n, a) => n + a.content.length, 0)
+  const useLinks = totalBytes > ATTACH_LIMIT
+
+  let downloadLinks: { filename: string; url: string }[] = []
+  if (useLinks) {
+    downloadLinks = await Promise.all(
+      envelope.documents
+        .filter((d) => d.signedKey)
+        .map(async (d) => ({
+          filename: d.name,
+          url: await getSignedUrl(d.signedKey as string, 604800),
+        }))
+    )
+  }
+
+  // Certificate of Completion as a 7-day download link (not an inline attachment).
+  let certificateUrl: string | null = null
   try {
-    const certBuf = await downloadPdf(certKey)
-    certAttachment = {
-      filename: `Certificate-of-Completion.pdf`,
-      content: certBuf,
-    }
+    certificateUrl = await getSignedUrl(certKey, 604800)
   } catch (err) {
-    logger.error(err, { op: 'sendCompleted-loadCertificate' })
+    logger.error(err, { op: 'sendCompleted-certificateUrl' })
   }
 
   const emailJobs = [
@@ -271,8 +294,8 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
           job.to,
           job.name,
           envelope.livemode ? envelope.subject : `[TEST] ${envelope.subject}`,
-          sealedAttachments,
-          certAttachment
+          useLinks ? [] : sealedAttachments,
+          { downloadLinks, certificateUrl }
         )
         await logAudit(envelopeId, 'EMAIL_SENT', {
           metadata: {

@@ -242,9 +242,8 @@ export function SignatureModal({
               <div className="relative border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-white">
                 <canvas
                   ref={canvasRef}
-                  className="signature-canvas w-full block"
+                  className="signature-canvas w-full block h-56 sm:h-44"
                   style={{
-                    height: 180,
                     touchAction: "none",
                     WebkitUserSelect: "none",
                     userSelect: "none",
@@ -259,7 +258,7 @@ export function SignatureModal({
                   onTouchCancel={stopDrawing}
                 />
                 {/* Guide line */}
-                <div className="absolute bottom-8 left-6 right-6 border-b border-gray-200 pointer-events-none" />
+                <div className="absolute bottom-10 left-6 right-6 border-b border-gray-200 pointer-events-none" />
               </div>
               <div className="flex justify-between items-center mt-2">
                 <p className="text-xs text-gray-400">
@@ -367,14 +366,14 @@ export function SignatureModal({
         <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100">
           <button
             onClick={onCancel}
-            className="h-10 px-4 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+            className="h-11 px-4 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleAdopt}
             disabled={!hasContent}
-            className="h-10 px-6 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="h-11 px-6 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Adopt and Sign
           </button>

@@ -1623,3 +1623,13 @@ p { color: var(--ink-3); line-height: 1.55; margin: 0; }
   border-radius: var(--r-sm);
 }
 
+
+/* react-pdf text layer: selectable so signers can copy document text, but kept
+   below the z-10 field overlays so taps on fields still hit the field, not the
+   text span. */
+.react-pdf__Page__textContent {
+  z-index: 1;
+}
+.react-pdf__Page__textContent span {
+  pointer-events: auto;
+}

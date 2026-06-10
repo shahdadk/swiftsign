@@ -46,31 +46,46 @@ export async function sendCompleted(
   signerName: string,
   envelopeSubject: string,
   attachments: { filename: string; content: Buffer }[],
-  certificateAttachment: { filename: string; content: Buffer } | null
+  opts: {
+    downloadLinks?: { filename: string; url: string }[]
+    certificateUrl?: string | null
+  } = {}
 ) {
-  // Best-effort: attach the sealed PDFs + certificate so the recipient has
-  // everything in their inbox even if our backup links ever expire.
-  // Resend accepts Buffer / string content; we pass Buffer.
-  const allAttachments = [...attachments]
-  if (certificateAttachment) allAttachments.push(certificateAttachment)
+  // The signed PDF is the deliverable. It's attached inline when small enough,
+  // or offered as a download link when the payload would exceed Resend's cap.
+  // The Certificate of Completion is offered as a link, not an attachment.
+  const { downloadLinks = [], certificateUrl = null } = opts
+  const useLinks = attachments.length === 0 && downloadLinks.length > 0
 
-  const docList = attachments
-    .map(
-      (d) => `
+  const docRows = useLinks
+    ? downloadLinks
+        .map(
+          (d) => `
+        <tr>
+          <td style="padding: 6px 0;">
+            <a href="${d.url}" style="color: #2563eb; font-weight: 600; text-decoration: none;">📄 ${d.filename}</a>
+            <span style="color: #94a3b8; font-size: 12px;"> &middot; download</span>
+          </td>
+        </tr>`
+        )
+        .join('')
+    : attachments
+        .map(
+          (d) => `
         <tr>
           <td style="padding: 6px 0;">
             <span style="color: #1f2937; font-weight: 500;">📄 ${d.filename}</span>
             <span style="color: #94a3b8; font-size: 12px;"> &middot; attached</span>
           </td>
         </tr>`
-    )
-    .join('')
+        )
+        .join('')
 
   await getResend().emails.send({
     from: FROM,
     to,
     subject: `"${envelopeSubject}" — signed and sealed`,
-    attachments: allAttachments.map((a) => ({
+    attachments: attachments.map((a) => ({
       filename: a.filename,
       content: a.content,
     })),
@@ -78,22 +93,18 @@ export async function sendCompleted(
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Signed and Sealed</h2>
         <p>Hi ${signerName},</p>
-        <p>All parties have signed <strong>"${envelopeSubject}"</strong>. Your signed copies are attached to this email.</p>
+        <p>All parties have signed <strong>"${envelopeSubject}"</strong>. Your signed document ${useLinks ? 'is ready to download below' : 'is attached to this email'}.</p>
 
         <table style="margin: 20px 0; width: 100%; border-collapse: collapse;">
-          ${docList}
-          ${
-            certificateAttachment
-              ? `<tr><td style="padding: 6px 0; border-top: 1px solid #e5e7eb;">
-                <span style="color: #475569; font-weight: 500;">📜 ${certificateAttachment.filename}</span>
-                <span style="color: #94a3b8; font-size: 12px;"> &middot; attached</span>
-              </td></tr>`
-              : ''
-          }
+          ${docRows}
         </table>
 
         <p style="color: #64748b; font-size: 14px;">
-          Each PDF carries a SHA-256 integrity hash. The Certificate of Completion records every signer's name, email, IP, location, and timestamps for audit purposes. Save these for your records.
+          Each PDF carries a SHA-256 integrity hash for tamper-evidence.${
+            certificateUrl
+              ? ` Need the full audit trail? <a href="${certificateUrl}" style="color: #2563eb;">Download the Certificate of Completion</a> — it records every signer's name, email, IP, and timestamps.`
+              : ''
+          } Save your signed copy for your records.
         </p>
       </div>
     `,

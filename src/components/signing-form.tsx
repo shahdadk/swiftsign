@@ -118,6 +118,7 @@ export function SigningForm({
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [showDeclineDialog, setShowDeclineDialog] = useState(false);
+  const [showDisclosure, setShowDisclosure] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -312,7 +313,7 @@ export function SigningForm({
     return (
       <div className="flex flex-col flex-1">
         <Header envelope={envelope} />
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-12">
           <div className="w-full max-w-2xl">
             {/* Sender info */}
             <div className="mb-8 text-center">
@@ -330,7 +331,7 @@ export function SigningForm({
             </div>
 
             {/* Consent card */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 shadow-sm">
+            <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-8 shadow-sm">
               <div className="flex items-start gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <svg
@@ -361,45 +362,36 @@ export function SigningForm({
               </div>
 
               {disclosure && (
-                <div className="mt-2 mb-2 border-t border-gray-100 pt-4">
-                  <div className="max-h-64 overflow-y-auto rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {disclosure.body}
-                  </div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mt-4 mb-1">
-                    Hardware &amp; Software Requirements
-                  </p>
-                  <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {disclosure.hardwareSoftwareReqs}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-3">
-                    Disclosure version {disclosure.version}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDisclosure(true)}
+                  className="mt-3 text-sm font-medium text-primary hover:underline"
+                >
+                  View electronic record &amp; signature disclosure
+                </button>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3 mt-6">
-                <button
-                  onClick={handleConsent}
-                  disabled={consenting}
-                  className="flex-1 h-11 rounded-lg bg-primary text-white font-medium hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {consenting ? (
-                    <>
-                      <Spinner size="sm" />
-                      Recording...
-                    </>
-                  ) : (
-                    "I Agree"
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowDeclineDialog(true)}
-                  disabled={consenting}
-                  className="h-11 px-6 text-gray-500 hover:text-gray-700 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Decline to Sign
-                </button>
-              </div>
+              <button
+                onClick={handleConsent}
+                disabled={consenting}
+                className="mt-6 w-full h-14 rounded-xl bg-primary text-white text-base font-semibold hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+              >
+                {consenting ? (
+                  <>
+                    <Spinner size="sm" />
+                    Recording...
+                  </>
+                ) : (
+                  "I Agree"
+                )}
+              </button>
+              <button
+                onClick={() => setShowDeclineDialog(true)}
+                disabled={consenting}
+                className="mt-3 w-full h-11 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Decline to sign
+              </button>
             </div>
 
             {/* Documents list */}
@@ -432,6 +424,35 @@ export function SigningForm({
           </div>
         </div>
 
+        {/* Electronic record disclosure modal */}
+        {showDisclosure && disclosure && (
+          <Dialog
+            title="Electronic Record & Signature Disclosure"
+            onClose={() => setShowDisclosure(false)}
+          >
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+              {disclosure.body}
+            </div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mt-4 mb-1">
+              Hardware &amp; Software Requirements
+            </p>
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+              {disclosure.hardwareSoftwareReqs}
+            </div>
+            <p className="text-xs text-gray-400 mt-3">
+              Disclosure version {disclosure.version}
+            </p>
+            <div className="flex justify-end mt-5">
+              <button
+                onClick={() => setShowDisclosure(false)}
+                className="h-11 px-5 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </Dialog>
+        )}
+
         {/* Decline dialog */}
         {showDeclineDialog && (
           <Dialog
@@ -451,13 +472,13 @@ export function SigningForm({
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDeclineDialog(false)}
-                className="h-9 px-4 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                className="h-11 px-4 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDecline}
-                className="h-9 px-4 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                className="h-11 px-4 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
               >
                 Decline to Sign
               </button>
@@ -489,7 +510,7 @@ export function SigningForm({
               </span>
             )}
           </span>
-          <div className="flex items-center gap-1.5">
+          <div className="hidden sm:flex items-center gap-1.5">
             {fields.map((f) => (
               <div
                 key={f.id}
@@ -543,10 +564,15 @@ export function SigningForm({
 
         {/* Bottom bar */}
         <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-gray-400 hidden sm:block">
-            {requiredRemaining > 0
-              ? `${requiredRemaining} required field${requiredRemaining === 1 ? "" : "s"} remaining`
-              : "All required fields complete"}
+          <p className="text-xs text-gray-400">
+            {requiredRemaining > 0 ? (
+              <>
+                <span className="sm:hidden">{requiredRemaining} required left</span>
+                <span className="hidden sm:inline">{`${requiredRemaining} required field${requiredRemaining === 1 ? "" : "s"} remaining`}</span>
+              </>
+            ) : (
+              "All required fields complete"
+            )}
           </p>
           <button
             onClick={() => setShowConfirmDialog(true)}
@@ -589,13 +615,13 @@ export function SigningForm({
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowConfirmDialog(false)}
-                className="h-9 px-4 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                className="h-11 px-4 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleComplete}
-                className="h-9 px-5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                className="h-11 px-5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
               >
                 Sign and Complete
               </button>
@@ -664,7 +690,7 @@ function Header({
         <span className="font-semibold text-sm">SwiftSign</span>
       </div>
       <div className="text-right">
-        <p className="text-sm font-medium truncate max-w-[200px] sm:max-w-none">
+        <p className="text-sm font-medium truncate max-w-[55vw] sm:max-w-none">
           {envelope.subject}
         </p>
         <p className="text-xs text-gray-400">from {envelope.senderName}</p>
@@ -688,7 +714,7 @@ function Dialog({
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
       />
-      <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+      <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-semibold mb-3">{title}</h3>
         {children}
       </div>
