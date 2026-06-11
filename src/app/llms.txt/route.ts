@@ -21,7 +21,7 @@ Completed documents get a SHA-256 integrity hash and a Certificate of Completion
 - Any MCP-aware client (Cursor, Zed, etc.): run \`npx -y swiftsign-mcp\` as a stdio server
 - Hosted remote MCP: \`claude mcp add --transport http swiftsign https://swiftsign.ca/mcp --header "Authorization: Bearer sk_..."\` (the first key comes from POST https://swiftsign.ca/api/v1/signup, not from the MCP server; OAuth is also supported)
 - [Node SDK](https://www.npmjs.com/package/swiftsign): \`npm install swiftsign\`
-- Python SDK: coming to PyPI
+- [Python SDK](https://pypi.org/project/swiftsign/): \`pip install swiftsign\`
 
 ## Pricing
 
