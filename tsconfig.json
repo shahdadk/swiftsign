@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "mcp", "scripts", "sdk-js", "sdk-python"]
+  "exclude": ["node_modules", "mcp", "scripts", "sdk-js", "sdk-python", "marketing"]
 }

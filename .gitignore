@@ -53,3 +53,6 @@ next-env.d.ts
 
 /src/generated/prisma
 scripts/get-tokens.ts
+
+# Local UX-test evidence (screenshots, sealed-PDF probes)
+.ux-shots/

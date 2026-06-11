@@ -1,6 +1,142 @@
 import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib'
 import { createHash } from 'crypto'
 
+// ── Signature image normalization ──────────────────────────────
+//
+// Signatures must land on the document as transparent, ink-tight images. An
+// opaque background box covers the signature line and any text near it; a
+// huge empty margin shrinks the visible ink and floats it off the line.
+//
+// New clients already adopt clean PNGs (src/lib/signature-image.ts), but
+// legacy saved adoptions and API-submitted images can be opaque — so the
+// seal runs the same normalization server-side, defensively.
+
+interface NormalizedImage {
+  png: Buffer
+  width: number
+  height: number
+}
+
+const ALPHA_INK_THRESHOLD = 24
+
+function sampleBackgroundColor(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number
+): { r: number; g: number; b: number } | null {
+  const rs: number[] = []
+  const gs: number[] = []
+  const bs: number[] = []
+  const push = (x: number, y: number) => {
+    const i = (y * width + x) * 4
+    if (data[i + 3] < 200) return
+    rs.push(data[i])
+    gs.push(data[i + 1])
+    bs.push(data[i + 2])
+  }
+  const stepX = Math.max(1, Math.floor(width / 64))
+  const stepY = Math.max(1, Math.floor(height / 64))
+  for (let x = 0; x < width; x += stepX) {
+    push(x, 0)
+    push(x, height - 1)
+  }
+  for (let y = 0; y < height; y += stepY) {
+    push(0, y)
+    push(width - 1, y)
+  }
+  if (rs.length < 8) return null
+  const median = (arr: number[]) => {
+    const s = [...arr].sort((a, b) => a - b)
+    return s[Math.floor(s.length / 2)]
+  }
+  return { r: median(rs), g: median(gs), b: median(bs) }
+}
+
+/**
+ * Strip an opaque light background and crop to the ink bounding box.
+ * Returns null when the image can't be processed — callers fall back to
+ * embedding the original bytes.
+ */
+async function normalizeSignatureImage(
+  imageBytes: Buffer
+): Promise<NormalizedImage | null> {
+  try {
+    const { createCanvas, loadImage } = await import('@napi-rs/canvas')
+    const img = await loadImage(imageBytes)
+    const scale = Math.min(1, 1400 / img.width, 700 / img.height)
+    const w = Math.max(1, Math.round(img.width * scale))
+    const h = Math.max(1, Math.round(img.height * scale))
+    const canvas = createCanvas(w, h)
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(img, 0, 0, w, h)
+
+    const imageData = ctx.getImageData(0, 0, w, h)
+    const data = imageData.data
+
+    // Only strip the background when the image has no real transparency of
+    // its own — a clean cutout must not have its anti-aliased edges eaten.
+    let transparentish = 0
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 250) transparentish++
+    }
+    if (transparentish / (data.length / 4) <= 0.02) {
+      const paper = sampleBackgroundColor(data, w, h)
+      if (paper) {
+        const luminance = 0.299 * paper.r + 0.587 * paper.g + 0.114 * paper.b
+        if (luminance >= 160) {
+          const NEAR = 10
+          const FAR = 72
+          const alphaScale = 255 / (FAR - NEAR)
+          for (let i = 0; i < data.length; i += 4) {
+            const d = Math.max(
+              Math.abs(data[i] - paper.r),
+              Math.abs(data[i + 1] - paper.g),
+              Math.abs(data[i + 2] - paper.b)
+            )
+            const a = Math.max(0, Math.min(255, (d - NEAR) * alphaScale))
+            if (a < data[i + 3]) data[i + 3] = a
+          }
+        }
+      }
+    }
+
+    // Ink bounding box
+    let x0 = w
+    let y0 = h
+    let x1 = -1
+    let y1 = -1
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (data[(y * w + x) * 4 + 3] > ALPHA_INK_THRESHOLD) {
+          if (x < x0) x0 = x
+          if (x > x1) x1 = x
+          if (y < y0) y0 = y
+          if (y > y1) y1 = y
+        }
+      }
+    }
+    if (x1 < 0) return null
+
+    ctx.putImageData(imageData, 0, 0)
+
+    const pad = 8
+    const cropX = Math.max(0, x0 - pad)
+    const cropY = Math.max(0, y0 - pad)
+    const cropW = Math.min(w, x1 + pad + 1) - cropX
+    const cropH = Math.min(h, y1 + pad + 1) - cropY
+
+    const out = createCanvas(cropW, cropH)
+    out
+      .getContext('2d')
+      .drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
+
+    return { png: out.toBuffer('image/png'), width: cropW, height: cropH }
+  } catch (err) {
+    console.warn('Seal: signature normalization failed, using original image:', err)
+    return null
+  }
+}
+
 export interface SealField {
   type: string
   x: number
@@ -73,11 +209,19 @@ export async function sealDocument(
 
     if (field.type === 'SIGNATURE' || field.type === 'INITIALS') {
       // Signature/initials fields — embed image if data URL, else draw text
-      if (field.value.startsWith('data:image/png')) {
+      if (field.value.startsWith('data:image/')) {
         try {
           const base64Data = field.value.split(',')[1]
           const imageBytes = Buffer.from(base64Data, 'base64')
-          const image = await pdfDoc.embedPng(imageBytes)
+
+          // Normalize: transparent background + ink-tight crop. Falls back
+          // to the original bytes if processing fails.
+          const normalized = await normalizeSignatureImage(imageBytes)
+          const image = normalized
+            ? await pdfDoc.embedPng(normalized.png)
+            : field.value.startsWith('data:image/png')
+              ? await pdfDoc.embedPng(imageBytes)
+              : await pdfDoc.embedJpg(imageBytes)
 
           // Scale image to fit within the field box while maintaining aspect ratio
           const imageAspect = image.width / image.height
@@ -99,12 +243,18 @@ export async function sealDocument(
           // image. Field y is top-left in our DB, so:
           //   pdf-lib y of box bottom = pageHeight - absY - absHeight
           // Drawing at that y puts the image bottom on the box bottom, which
-          // is where the underline sits.
+          // is where the underline sits. Signatures get a small overhang
+          // below the line so descenders cross it the way a pen signature
+          // does, instead of hovering above.
           const boxBottomY = pageHeight - absY - absHeight
+          const overhang =
+            field.type === 'SIGNATURE'
+              ? Math.min(absHeight * 0.12, drawHeight * 0.18, 3)
+              : 0
 
           page.drawImage(image, {
             x: absX,
-            y: boxBottomY,
+            y: Math.max(0, boxBottomY - overhang),
             width: drawWidth,
             height: drawHeight,
           })

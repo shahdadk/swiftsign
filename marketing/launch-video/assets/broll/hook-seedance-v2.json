@@ -1,0 +1,29 @@
+[
+  {
+    "id": "9ab8507c-5542-4ff6-8ee2-60019748eb4d",
+    "status": "completed",
+    "display_name": "Seedance 2.0",
+    "job_set_type": "seedance_2_0",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3EVMwfaNHsqlipoP5rgmvcTdKZb/hf_20260604_055636_9ab8507c-5542-4ff6-8ee2-60019748eb4d.mp4",
+    "created_at": 1780552596.606726,
+    "params": {
+      "width": 1280,
+      "height": 720,
+      "prompt": "Extreme macro shot of a fountain pen nib touching dark navy paper, electric blue ink flowing from the nib and spreading through the paper fibers in slow motion, forming an elegant curved line like the start of a signature. Single cool blue light source, deep navy and electric blue palette, near-black background, shallow depth of field, cinematic. No text, no logos, no faces.",
+      "genre": "auto",
+      "medias": [],
+      "duration": 6,
+      "resolution": "720p",
+      "aspect_ratio": "16:9",
+      "generate_audio": true,
+      "multi_shots": false,
+      "multi_shot_mode": "custom",
+      "multi_prompt": [],
+      "speedramp": "auto",
+      "reference_elements": [],
+      "prompt_language": "en",
+      "mode": "std",
+      "model": "seedance_2_0"
+    }
+  }
+]

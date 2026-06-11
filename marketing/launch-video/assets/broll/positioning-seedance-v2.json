@@ -1,0 +1,29 @@
+[
+  {
+    "id": "19293786-6ad2-410b-97ae-ccca43a8f36c",
+    "status": "completed",
+    "display_name": "Seedance 2.0",
+    "job_set_type": "seedance_2_0",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3EVMwfaNHsqlipoP5rgmvcTdKZb/hf_20260604_060050_19293786-6ad2-410b-97ae-ccca43a8f36c.mp4",
+    "created_at": 1780552850.734039,
+    "params": {
+      "width": 1280,
+      "height": 720,
+      "prompt": "Shot 1: slow aerial drift over a dark minimal desk at night, a laptop screen casting electric blue glow across a matte black surface, fine dust drifting in the beam of light. Shot 2: macro of a circular emblem of glowing electric blue light slowly forming and settling onto dark paper, soft luminous edges. Continuous deep navy and electric blue palette, near-black backgrounds, cinematic lighting, smooth transition. No text, no logos, no faces.",
+      "genre": "auto",
+      "medias": [],
+      "duration": 10,
+      "resolution": "720p",
+      "aspect_ratio": "16:9",
+      "generate_audio": true,
+      "multi_shots": false,
+      "multi_shot_mode": "custom",
+      "multi_prompt": [],
+      "speedramp": "auto",
+      "reference_elements": [],
+      "prompt_language": "en",
+      "mode": "std",
+      "model": "seedance_2_0"
+    }
+  }
+]

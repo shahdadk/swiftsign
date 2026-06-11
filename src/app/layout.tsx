@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Dancing_Script,
+  Caveat,
+  Great_Vibes,
+  Homemade_Apple,
+} from "next/font/google";
 
 import "./globals.css";
 
@@ -11,6 +18,37 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// Handwriting fonts for the typed-signature styles in the signer flow.
+// preload:false keeps them off the critical path; they fetch lazily when the
+// signature modal references the CSS variables.
+const dancingScript = Dancing_Script({
+  variable: "--font-sig-dancing",
+  subsets: ["latin"],
+  weight: "600",
+  preload: false,
+});
+
+const caveat = Caveat({
+  variable: "--font-sig-caveat",
+  subsets: ["latin"],
+  weight: "600",
+  preload: false,
+});
+
+const greatVibes = Great_Vibes({
+  variable: "--font-sig-vibes",
+  subsets: ["latin"],
+  weight: "400",
+  preload: false,
+});
+
+const homemadeApple = Homemade_Apple({
+  variable: "--font-sig-apple",
+  subsets: ["latin"],
+  weight: "400",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -81,7 +119,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${dancingScript.variable} ${caveat.variable} ${greatVibes.variable} ${homemadeApple.variable}`}
+    >
       <body>
         <script
           type="application/ld+json"

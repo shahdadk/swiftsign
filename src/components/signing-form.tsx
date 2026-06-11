@@ -4,6 +4,10 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useState, useCallback, useEffect } from "react";
 import { Logo } from "./landing/icons";
+import {
+  loadImageElement,
+  processSignatureSource,
+} from "@/lib/signature-image";
 
 // react-pdf and the canvas signature pad touch browser globals (DOMMatrix,
 // canvas) during render, which throws when this client component is
@@ -161,6 +165,27 @@ export function SigningForm({
   ).length;
   const allRequiredDone = requiredCompleted === requiredCount;
 
+  // Reading-order sort (document, page, top-to-bottom, left-to-right) so the
+  // guided "Next" flow walks the document the way a person reads it.
+  const docOrder = new Map(documents.map((d) => [d.id, d.order]));
+  const nextRequiredField =
+    [...fields]
+      .sort(
+        (a, b) =>
+          (docOrder.get(a.documentId) ?? 0) - (docOrder.get(b.documentId) ?? 0) ||
+          a.page - b.page ||
+          a.y - b.y ||
+          a.x - b.x
+      )
+      .find((f) => f.required && !f.value) ?? null;
+
+  const goToNextField = useCallback(() => {
+    if (!nextRequiredField) return;
+    document
+      .getElementById(`sigfield-${nextRequiredField.id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [nextRequiredField]);
+
   const updateFieldValue = useCallback(
     (fieldId: string, value: string) => {
       setFields((prev) =>
@@ -169,6 +194,40 @@ export function SigningForm({
     },
     []
   );
+
+  // Legacy saved adoptions (and any API-submitted signature) may be opaque
+  // PNGs with a white background that covers the signature line and nearby
+  // text when stamped on the PDF. Normalize them on load: strip the
+  // background, crop to the ink. The cleaned value is what gets submitted,
+  // which also upgrades the signer's saved adoption for future documents.
+  useEffect(() => {
+    let cancelled = false;
+    const normalize = async () => {
+      const candidates = fields.filter(
+        (f) =>
+          (f.type === "SIGNATURE" || f.type === "INITIALS") &&
+          f.value?.startsWith("data:image/")
+      );
+      for (const f of candidates) {
+        try {
+          const img = await loadImageElement(f.value!);
+          const processed = processSignatureSource(img, {
+            removeBackground: true,
+            padding: 12,
+          });
+          if (!cancelled && processed) updateFieldValue(f.id, processed.dataUrl);
+        } catch {
+          // Keep the original value — the server normalizes again at seal time.
+        }
+      }
+    };
+    void normalize();
+    return () => {
+      cancelled = true;
+    };
+    // Mount-only: normalizes the server-provided prefills exactly once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleConsent = async () => {
     setConsenting(true);
@@ -499,38 +558,50 @@ export function SigningForm({
       <div className="flex flex-col h-screen">
         <Header envelope={envelope} />
 
-        {/* Progress bar */}
-        <div className="bg-white border-b border-gray-100 px-4 py-2.5 flex items-center justify-between gap-3">
-          <span className="text-sm text-gray-500">
-            {completedCount} of {fields.length} fields completed
-            {documents.length > 1 && (
-              <span className="text-gray-400">
-                {" "}
-                · {documents.length} documents
-              </span>
-            )}
-          </span>
-          <div className="hidden sm:flex items-center gap-1.5">
-            {fields.map((f) => (
-              <div
-                key={f.id}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  f.value ? "bg-green-500" : "bg-gray-300"
-                }`}
-              />
-            ))}
+        {/* Progress strip */}
+        <div className="bg-white border-b border-gray-100 px-4 pt-2 pb-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm text-gray-500">
+              {completedCount} of {fields.length} fields completed
+              {documents.length > 1 && (
+                <span className="text-gray-400">
+                  {" "}
+                  · {documents.length} documents
+                </span>
+              )}
+            </span>
+            <button
+              onClick={() => setShowDeclineDialog(true)}
+              className="text-xs text-gray-400 hover:text-red-600 font-medium transition-colors"
+            >
+              Decline to sign
+            </button>
+          </div>
+          <div
+            className="mt-1.5 h-1 bg-gray-100 rounded-full overflow-hidden"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={fields.length}
+            aria-valuenow={completedCount}
+          >
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-300"
+              style={{
+                width: `${fields.length ? (completedCount / fields.length) * 100 : 0}%`,
+              }}
+            />
           </div>
         </div>
 
         {/* All documents stacked vertically */}
         <div className="flex-1 overflow-auto bg-gray-100">
-          <div className="p-4 max-w-4xl mx-auto space-y-8">
+          <div className="p-2 sm:p-4 max-w-4xl mx-auto space-y-8">
             {documents.map((doc, i) => {
               const docFields = fields.filter((f) => f.documentId === doc.id);
               return (
                 <section key={doc.id}>
                   <header className="flex items-baseline justify-between mb-2 px-1">
-                    <h2 className="text-sm font-semibold text-gray-900">
+                    <h2 className="text-sm font-semibold text-gray-900 truncate">
                       {documents.length > 1 && (
                         <span className="text-xs text-gray-400 font-medium mr-2">
                           {i + 1} / {documents.length}
@@ -538,7 +609,7 @@ export function SigningForm({
                       )}
                       {doc.name}
                     </h2>
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-gray-400 flex-shrink-0">
                       {docFields.filter((f) => f.value).length}/{docFields.length}{" "}
                       fields
                     </span>
@@ -550,6 +621,7 @@ export function SigningForm({
                     fields={docFields}
                     onFieldClick={handleFieldClick}
                     activeFieldId={activeFieldId}
+                    nextFieldId={nextRequiredField?.id ?? null}
                     onTextFieldChange={updateFieldValue}
                   />
                 </section>
@@ -562,9 +634,33 @@ export function SigningForm({
           </div>
         </div>
 
+        {/* Guided "next field" pill — takes the signer to the next thing to
+            do instead of making them hunt through pages. */}
+        {!allRequiredDone && step === "SIGNING" && (
+          <button
+            onClick={goToNextField}
+            className="fixed right-4 sm:right-8 bottom-[calc(76px+env(safe-area-inset-bottom))] z-30 h-11 pl-5 pr-4 rounded-full bg-primary text-white text-sm font-semibold shadow-lg shadow-primary/30 flex items-center gap-2 hover:bg-primary-dark active:scale-[0.98] transition-all"
+          >
+            {requiredCompleted === 0 ? "Start" : "Next"}
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3"
+              />
+            </svg>
+          </button>
+        )}
+
         {/* Bottom bar */}
-        <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-gray-400">
+        <div className="bg-white border-t border-gray-200 px-4 py-3 pb-safe flex items-center justify-between gap-3">
+          <p className="text-xs text-gray-500">
             {requiredRemaining > 0 ? (
               <>
                 <span className="sm:hidden">{requiredRemaining} required left</span>
@@ -574,32 +670,73 @@ export function SigningForm({
               "All required fields complete"
             )}
           </p>
-          <button
-            onClick={() => setShowConfirmDialog(true)}
-            disabled={!allRequiredDone || step === "SUBMITTING"}
-            className="h-11 px-6 sm:px-8 rounded-lg bg-primary text-white font-medium hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 ml-auto"
+          {/* When disabled, a tap walks the signer to the missing field
+              instead of doing nothing. */}
+          <span
+            onClick={!allRequiredDone ? goToNextField : undefined}
+            className="ml-auto"
           >
-            {step === "SUBMITTING" ? (
-              <>
-                <Spinner size="sm" />
-                Submitting...
-              </>
-            ) : (
-              "Complete Signing"
-            )}
-          </button>
+            <button
+              onClick={() => setShowConfirmDialog(true)}
+              disabled={!allRequiredDone || step === "SUBMITTING"}
+              className="h-11 px-6 sm:px-8 rounded-lg bg-primary text-white font-medium hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {step === "SUBMITTING" ? (
+                <>
+                  <Spinner size="sm" />
+                  Submitting...
+                </>
+              ) : (
+                "Complete Signing"
+              )}
+            </button>
+          </span>
         </div>
 
         {/* Signature modal */}
         {showSignatureModal && activeField && (
           <SignatureModal
             fieldType={activeField.type === "INITIALS" ? "initials" : "signature"}
+            signerName={recipient.name}
             onAdopt={handleSignatureAdopt}
             onCancel={() => {
               setShowSignatureModal(false);
               setActiveFieldId(null);
             }}
           />
+        )}
+
+        {/* Decline dialog (also reachable during signing) */}
+        {showDeclineDialog && (
+          <Dialog
+            title="Decline to Sign"
+            onClose={() => setShowDeclineDialog(false)}
+          >
+            <p className="text-gray-600 text-sm mb-4">
+              Are you sure you want to decline? The sender will be notified that
+              you chose not to sign.
+            </p>
+            <textarea
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder="Reason for declining (optional)"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-4 resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeclineDialog(false)}
+                className="h-9 px-4 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDecline}
+                className="h-9 px-4 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Decline to Sign
+              </button>
+            </div>
+          </Dialog>
         )}
 
         {/* Confirm dialog */}

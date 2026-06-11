@@ -1,0 +1,29 @@
+[
+  {
+    "id": "08497259-1f16-4785-a69c-1b0d9f99303f",
+    "status": "completed",
+    "display_name": "Seedance 2.0",
+    "job_set_type": "seedance_2_0",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3EVMwfaNHsqlipoP5rgmvcTdKZb/hf_20260604_055002_08497259-1f16-4785-a69c-1b0d9f99303f.mp4",
+    "created_at": 1780552202.137556,
+    "params": {
+      "width": 1280,
+      "height": 720,
+      "prompt": "Macro shot of dark blue ink dispersing through black water, forming slow swirling tendrils lit by a single electric blue light source from the right. The camera slowly pushes in. Deep navy and electric blue palette on a near-black background, shallow depth of field, cinematic lighting. No text, no logos, no people.",
+      "genre": "auto",
+      "medias": [],
+      "duration": 6,
+      "resolution": "720p",
+      "aspect_ratio": "16:9",
+      "generate_audio": true,
+      "multi_shots": false,
+      "multi_shot_mode": "custom",
+      "multi_prompt": [],
+      "speedramp": "auto",
+      "reference_elements": [],
+      "prompt_language": "en",
+      "mode": "std",
+      "model": "seedance_2_0"
+    }
+  }
+]

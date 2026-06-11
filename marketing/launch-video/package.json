@@ -1,0 +1,22 @@
+{
+  "name": "swiftsign-launch-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SwiftSign launch video, composed in Remotion (React to MP4). Instance #1 of the product-launch-video pipeline.",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render LaunchMaster out/swiftsign-launch-master.mp4",
+    "render:vertical": "remotion render LaunchVertical out/swiftsign-launch-9x16.mp4",
+    "still": "remotion still"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.469",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "playwright-core": "^1.60.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "remotion": "^4.0.469",
+    "typescript": "^6.0.3"
+  }
+}

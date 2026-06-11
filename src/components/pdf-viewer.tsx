@@ -41,6 +41,8 @@ interface PdfViewerProps {
   fields: FieldOverlay[];
   onFieldClick: (fieldId: string) => void;
   activeFieldId: string | null;
+  /** The next incomplete required field — gets a guiding pulse. */
+  nextFieldId?: string | null;
   onTextFieldChange: (fieldId: string, value: string) => void;
 }
 
@@ -62,6 +64,7 @@ export function PdfViewer({
   fields,
   onFieldClick,
   activeFieldId,
+  nextFieldId,
   onTextFieldChange,
 }: PdfViewerProps) {
   const fileUrl = useMemo(
@@ -125,6 +128,11 @@ export function PdfViewer({
                     field.type === "SIGNATURE" || field.type === "INITIALS";
                   const isInlineText = field.type === "TEXT";
                   const opts = field.options ?? [];
+                  // Guide the signer: the next incomplete required field
+                  // pulses until it's filled.
+                  const isNext = field.id === nextFieldId && !isFilled;
+                  const guideCls = isNext ? "field-guide-pulse" : "";
+                  const anchorId = `sigfield-${field.id}`;
 
                   // Inline editable text input — renders on top of the field.
                   // Solid white bg so the underlying placeholder text in the
@@ -134,7 +142,8 @@ export function PdfViewer({
                     return (
                       <div
                         key={field.id}
-                        className={`absolute z-10 rounded-sm transition-all bg-white ${
+                        id={anchorId}
+                        className={`absolute z-10 rounded-sm transition-all bg-white scroll-mt-28 ${guideCls} ${
                           isFilled
                             ? "border border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.15)]"
                             : "border border-amber-400 shadow-[0_0_0_2px_rgba(245,158,11,0.15)]"
@@ -167,7 +176,8 @@ export function PdfViewer({
                     return (
                       <div
                         key={field.id}
-                        className={`absolute z-10 rounded-sm transition-all bg-white ${
+                        id={anchorId}
+                        className={`absolute z-10 rounded-sm transition-all bg-white scroll-mt-28 ${guideCls} ${
                           isFilled
                             ? "border border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.15)]"
                             : "border border-amber-400 shadow-[0_0_0_2px_rgba(245,158,11,0.15)]"
@@ -208,7 +218,8 @@ export function PdfViewer({
                     return (
                       <div
                         key={field.id}
-                        className={`absolute z-10 rounded-sm transition-all bg-white/95 overflow-auto ${
+                        id={anchorId}
+                        className={`absolute z-10 rounded-sm transition-all bg-white/95 overflow-auto scroll-mt-28 ${guideCls} ${
                           isFilled
                             ? "border border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.15)]"
                             : "border border-amber-400 shadow-[0_0_0_2px_rgba(245,158,11,0.15)]"
@@ -252,7 +263,8 @@ export function PdfViewer({
                     return (
                       <div
                         key={field.id}
-                        className={`absolute z-10 rounded-sm transition-all bg-white flex items-center px-1.5 ${
+                        id={anchorId}
+                        className={`absolute z-10 rounded-sm transition-all bg-white flex items-center px-1.5 scroll-mt-28 ${guideCls} ${
                           isFilled
                             ? "border border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.15)]"
                             : "border border-amber-400 shadow-[0_0_0_2px_rgba(245,158,11,0.15)]"
@@ -293,10 +305,16 @@ export function PdfViewer({
                   return (
                     <div
                       key={field.id}
+                      id={anchorId}
                       onClick={() => onFieldClick(field.id)}
-                      className={`absolute flex items-center cursor-pointer rounded-sm transition-all z-10 ${
+                      // before:* expands the touch target ~10px past the
+                      // visual box — PDF fields are far smaller than the
+                      // 44px minimum tap size on phones.
+                      className={`absolute flex items-center cursor-pointer rounded-sm transition-all z-10 scroll-mt-28 before:absolute before:-inset-2.5 before:content-[''] ${guideCls} ${
                         isFilled
-                          ? "border border-green-400/60 bg-green-50/30"
+                          ? isImageField
+                            ? "border border-green-400/50 hover:bg-green-50/20"
+                            : "border border-green-400/60 bg-green-50/30"
                           : "border border-amber-400/80 bg-amber-50/50 hover:bg-amber-100/60"
                       } ${isActive ? "ring-1 ring-blue-500" : ""}`}
                       style={{
@@ -333,10 +351,13 @@ export function PdfViewer({
                       )}
 
                       {isFilled && isImageField && (
+                        // Bottom-left alignment mirrors how the seal step
+                        // places the image in the sealed PDF — the preview is
+                        // what the signer actually gets.
                         <img
                           src={field.value!}
                           alt={field.type}
-                          className="w-full h-full object-contain p-1"
+                          className="w-full h-full object-contain object-left-bottom"
                           draggable={false}
                         />
                       )}
