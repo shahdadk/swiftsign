@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 const faqs = [
   {
     q: "Are SwiftSign signatures legally binding?",
-    a: "SwiftSign envelopes are built to be compliant with ESIGN, UETA, and PIPEDA. Each completed document is sealed with a SHA-256 hash and a PKCS#7 / PAdES signature, carries an RFC-3161 trusted timestamp, and ships with a Certificate of Completion plus a tamper-evident audit trail. A publicly-trusted signing-certificate chain upgrade is in progress; until it lands, Adobe shows the cryptographic signature as present with trust pending. Sandbox sends are watermarked and explicitly non-binding.",
+    a: "SwiftSign envelopes are built to be compliant with ESIGN, UETA, and PIPEDA. Each completed document is hashed with SHA-256 and ships with a Certificate of Completion that records each signer's name, email, IP, timestamp, and signature method, backed by a hash-chained, tamper-evident audit trail. That record is what makes the signature legally binding. Cryptographic in-PDF signing with a publicly-trusted certificate is available for live workspaces that need it. Sandbox sends are watermarked and explicitly non-binding.",
   },
   {
     q: "Can my AI agent actually send contracts?",
@@ -49,7 +49,7 @@ const compare: Array<{ feature: string; swiftsign: string; docusign: string }> =
   { feature: "MCP server", swiftsign: "First-party, stdio + hosted URL", docusign: "Yes (requires a DocuSign account)" },
   { feature: "Agent sends", swiftsign: "Confirm-gated draft on live keys", docusign: "Standard API send" },
   { feature: "Pricing", swiftsign: "$15/mo flat, fair-use 100/mo", docusign: "From $45/user/mo (Standard, list)" },
-  { feature: "Sealed PDF + Certificate", swiftsign: "Yes, with RFC-3161 timestamp", docusign: "Yes" },
+  { feature: "Sealed PDF + Certificate", swiftsign: "Yes, SHA-256 + audit trail", docusign: "Yes" },
   { feature: "Compliance breadth", swiftsign: "ESIGN / UETA / PIPEDA", docusign: "Broad enterprise certifications" },
 ];
 

@@ -14,7 +14,7 @@ import {
 export const metadata: Metadata = {
   title: "Trust: signing mail, seals, and data · SwiftSign",
   description:
-    "How SwiftSign protects documents: SPF, DKIM, and DMARC on signing mail, SHA-256 + PKCS#7 seals with RFC-3161 timestamps, data in Neon Postgres and Cloudflare R2, deletion on request.",
+    "How SwiftSign protects documents: SPF, DKIM, and DMARC on signing mail, SHA-256 document hashing with a Certificate of Completion audit trail, data in Neon Postgres and Cloudflare R2, deletion on request.",
 };
 
 type TrustItem = {
@@ -45,17 +45,19 @@ const items: TrustItem[] = [
     title: "Document integrity",
     body: (
       <>
-        Every completed document is hashed with SHA-256, sealed with a PAdES
-        (PKCS#7) digital signature, and stamped with an RFC-3161 trusted
-        timestamp over the final bytes. Honest caveat: the seal currently
-        chains to a SwiftSign certificate; an upgrade to a publicly-trusted
-        signing certificate is in progress.
+        Every completed document is hashed with SHA-256 and bound to a
+        Certificate of Completion that records each signer&apos;s name, email,
+        IP address, timestamp, and signature method, backed by a hash-chained,
+        tamper-evident audit log. That record is what makes the signature
+        legally binding under the U.S. ESIGN Act, UETA, and Canadian
+        e-commerce law. Cryptographic in-PDF signing with a publicly-trusted
+        certificate is available for live workspaces that need it.
       </>
     ),
-    code: `digest:     SHA-256 over the final sealed bytes
-signature:  PAdES (PKCS#7 / CAdES-T)
-timestamp:  RFC-3161, from a trusted TSA
-artifacts:  sealed PDF + Certificate of Completion`,
+    code: `digest:       SHA-256 over the final document bytes
+audit trail:  signer name, email, IP, timestamp, method
+chain:        hash-chained, tamper-evident audit log
+artifacts:    sealed PDF + Certificate of Completion`,
   },
   {
     icon: <Api />,
