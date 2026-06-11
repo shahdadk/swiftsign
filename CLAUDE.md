@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npx prisma generate` — regenerate the Prisma client into `src/generated/prisma/` (gitignored).
 - `npx prisma migrate dev --name <slug>` — create/apply a migration. Config is `prisma.config.ts` (not the legacy `package.json#prisma` block); it loads `.env` via `dotenv/config`.
 - `npx tsx prisma/seed.ts` — one-off seed (not wired into `package.json`; run manually).
+- `SWIFTSIGN_API_KEY=<sk_test_...> npx tsx --env-file=.env --env-file=.env.local scripts/ux-test-envelope.ts [email]` — signer-UX test harness: builds a 2-page agreement with occlusion-sensitive text around the signature line, creates AND sends a sandbox envelope via the local API (`npm run dev` must be up), prints the signing URL. Test-mode envelopes don't count against quota. Use a TEST api key (`createApiKey(userId, { mode: 'TEST' })`).
 - MCP package is a separate workspace: `cd mcp && npm install && npm run build` (own `node_modules`, own `tsconfig.json`, published to npm as `swiftsign-mcp`).
 - **`.npmrc` pins `legacy-peer-deps=true`** — required for the React 19 / Next 16 / Prisma 7 preview combo. Plain `npm install` without it will fail peer resolution.
 
