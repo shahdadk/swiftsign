@@ -33,6 +33,7 @@ if (process.argv[2] === "import-docusign") {
 
   const server = new McpServer({
     name: "swiftsign",
+    title: "SwiftSign",
     version: "0.5.0",
   });
 
