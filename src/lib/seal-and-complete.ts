@@ -127,6 +127,11 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
         documentHash,
       },
     })
+    // Keep the in-memory document in sync — the completion-email step below
+    // reads doc.signedKey from THIS object. On a first-pass seal the loaded
+    // value is null, so without this every just-sealed document was skipped
+    // and the completion email went out with no attachment.
+    doc.signedKey = sealedKey
 
     documentHashes[doc.name] = documentHash
     logger.info('document sealed', { envelopeId, docName: doc.name, signatureProfile, tsaTime })
@@ -250,9 +255,11 @@ export async function sealAndComplete(envelopeId: string): Promise<void> {
 
   // Resend caps total payload at ~40 MB; base64 inflates ~33%, so guard at 25 MB
   // of raw bytes and fall back to signed download links over the threshold.
+  // Also fall back to links when NO attachment could be loaded — the email
+  // must never claim "attached to this email" with nothing attached.
   const ATTACH_LIMIT = 25 * 1024 * 1024
   const totalBytes = sealedAttachments.reduce((n, a) => n + a.content.length, 0)
-  const useLinks = totalBytes > ATTACH_LIMIT
+  const useLinks = totalBytes > ATTACH_LIMIT || sealedAttachments.length === 0
 
   let downloadLinks: { filename: string; url: string }[] = []
   if (useLinks) {
