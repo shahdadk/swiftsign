@@ -12,6 +12,7 @@ import { prisma } from '../src/lib/db'
 const API_URL = process.env.UX_TEST_API_URL ?? 'http://localhost:3000'
 const API_KEY = process.env.SWIFTSIGN_API_KEY
 const RECIPIENT_EMAIL = process.argv[2] ?? 'shahdadkompanizare@gmail.com'
+const SUBJECT = process.argv[3] ?? 'SwiftSign UX test - ignore'
 
 if (!API_KEY) {
   console.error('SWIFTSIGN_API_KEY env var is required')
@@ -95,7 +96,7 @@ async function main() {
       Authorization: `Bearer ${API_KEY}`,
     },
     body: JSON.stringify({
-      subject: 'SwiftSign UX test - ignore',
+      subject: SUBJECT,
       message: 'Internal signer-UX test envelope. Safe to ignore.',
       documents: [{ name: 'UX_Test_Agreement.pdf', base64 }],
       recipients: [{ name: 'Shahdad Kompanizare', email: RECIPIENT_EMAIL }],

@@ -114,13 +114,7 @@ export function SignatureModal({
     return signerName;
   }, [signerName, fieldType]);
 
-  // Touch-first devices get the draw tab; mouse users get instant typed
-  // styles (drawing with a mouse is the weakest input).
-  const [activeTab, setActiveTab] = useState<Tab>(() =>
-    typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches
-      ? "type"
-      : "draw"
-  );
+  const [activeTab, setActiveTab] = useState<Tab>("draw");
 
   // ── Draw state ──────────────────────────────────────────────
   const canvasRef = useRef<HTMLCanvasElement>(null);
