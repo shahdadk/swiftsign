@@ -143,7 +143,14 @@ export function PdfViewer({
                       <div
                         key={field.id}
                         id={anchorId}
-                        className={`absolute z-10 rounded-sm transition-all bg-white scroll-mt-28 ${guideCls} ${
+                        // The box matches the field's true size so its borders
+                        // never cross neighboring document text; the before:*
+                        // inset extends the TAP area invisibly and the click
+                        // handler forwards focus into the input.
+                        onClick={(e) =>
+                          (e.currentTarget.querySelector("input") as HTMLInputElement | null)?.focus()
+                        }
+                        className={`absolute z-10 rounded-sm transition-all bg-white scroll-mt-28 before:absolute before:-inset-2.5 before:content-[''] ${guideCls} ${
                           isFilled
                             ? "border border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.15)]"
                             : "border border-amber-400 shadow-[0_0_0_2px_rgba(245,158,11,0.15)]"
@@ -153,7 +160,7 @@ export function PdfViewer({
                           top: `${field.y}%`,
                           width: `${field.width}%`,
                           height: `${field.height}%`,
-                          minHeight: 44,
+                          minHeight: 20,
                         }}
                       >
                         <input
@@ -177,7 +184,10 @@ export function PdfViewer({
                       <div
                         key={field.id}
                         id={anchorId}
-                        className={`absolute z-10 rounded-sm transition-all bg-white scroll-mt-28 ${guideCls} ${
+                        onClick={(e) =>
+                          (e.currentTarget.querySelector("select") as HTMLSelectElement | null)?.focus()
+                        }
+                        className={`absolute z-10 rounded-sm transition-all bg-white scroll-mt-28 before:absolute before:-inset-2.5 before:content-[''] ${guideCls} ${
                           isFilled
                             ? "border border-green-400 shadow-[0_0_0_2px_rgba(34,197,94,0.15)]"
                             : "border border-amber-400 shadow-[0_0_0_2px_rgba(245,158,11,0.15)]"
@@ -187,7 +197,7 @@ export function PdfViewer({
                           top: `${field.y}%`,
                           width: `${field.width}%`,
                           height: `${field.height}%`,
-                          minHeight: 44,
+                          minHeight: 20,
                         }}
                       >
                         <select
@@ -229,7 +239,7 @@ export function PdfViewer({
                           top: `${field.y}%`,
                           width: `${field.width}%`,
                           height: `${field.height}%`,
-                          minHeight: 44,
+                          minHeight: 20,
                         }}
                       >
                         <div className="flex flex-col gap-0.5 px-1.5 py-1">
@@ -274,7 +284,7 @@ export function PdfViewer({
                           top: `${field.y}%`,
                           width: `${field.width}%`,
                           height: `${field.height}%`,
-                          minHeight: 44,
+                          minHeight: 20,
                         }}
                       >
                         {isFilled ? (
@@ -307,13 +317,16 @@ export function PdfViewer({
                       key={field.id}
                       id={anchorId}
                       onClick={() => onFieldClick(field.id)}
-                      // before:* expands the touch target ~10px past the
-                      // visual box — PDF fields are far smaller than the
-                      // 44px minimum tap size on phones.
+                      // The box matches the field's true size so its borders
+                      // never read as strikethrough on neighboring document
+                      // text; before:* expands the TAP target ~10px past the
+                      // visual box instead of inflating the box itself.
+                      // Filled signatures drop the border entirely — the ink
+                      // is the content, exactly as it will seal.
                       className={`absolute flex items-center cursor-pointer rounded-sm transition-all z-10 scroll-mt-28 before:absolute before:-inset-2.5 before:content-[''] ${guideCls} ${
                         isFilled
                           ? isImageField
-                            ? "border border-green-400/50 hover:bg-green-50/20"
+                            ? "border border-transparent hover:border-green-300/70 hover:bg-green-50/20"
                             : "border border-green-400/60 bg-green-50/30"
                           : "border border-amber-400/80 bg-amber-50/50 hover:bg-amber-100/60"
                       } ${isActive ? "ring-1 ring-blue-500" : ""}`}
@@ -322,8 +335,7 @@ export function PdfViewer({
                         top: `${field.y}%`,
                         width: `${field.width}%`,
                         height: `${field.height}%`,
-                        minHeight: 44,
-                        minWidth: 44,
+                        minHeight: 20,
                       }}
                     >
                       {!isFilled && (
