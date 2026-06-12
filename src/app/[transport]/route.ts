@@ -43,7 +43,14 @@ const authedHandler = withMcpAuth(
       extra: { userId: auth.user.id, livemode: auth.livemode },
     }
   },
-  { required: true }
+  // required: false lets anonymous `initialize` + `tools/list` through so
+  // directory crawlers and health checks (Glama, mcp.so, etc.) can introspect
+  // the server and clients can preview the tools without a key. Tool *calls*
+  // still need a Bearer key: every tool resolves the key for its API request,
+  // so an unauthenticated call gets a 401 from the SwiftSign API. The tool list
+  // is already public (OpenAPI, the MCP registry, the stdio binary), so this
+  // exposes nothing new.
+  { required: false }
 )
 
 export { authedHandler as GET, authedHandler as POST, authedHandler as DELETE }
