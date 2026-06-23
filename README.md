@@ -1,18 +1,63 @@
+<p align="center">
+  <img src="./assets/banner.svg" alt="SwiftSign — AI-native e-signatures" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://swiftsign.ca"><img src="https://img.shields.io/badge/swiftsign.ca-live-0D1117?style=flat-square" alt="Live"></a>
+  <a href="https://github.com/shahdadk/swiftsign-mcp"><img src="https://img.shields.io/badge/MCP-swiftsign--mcp-0D1117?style=flat-square" alt="MCP server"></a>
+  <img src="https://img.shields.io/badge/SDKs-JS_·_Python-0D1117?style=flat-square" alt="SDKs">
+  <img src="https://img.shields.io/badge/ESIGN_·_UETA_·_PIPEDA-0D1117?style=flat-square" alt="Compliant">
+</p>
+
 # SwiftSign
 
-AI-native e-signatures. Send, track, and seal contracts from your terminal — Claude Code, Cursor, Zed, or any MCP-aware agent. ESIGN / UETA / PIPEDA compliant sealed PDFs with audit trail.
+AI-native e-signatures. Send, track, and seal contracts from your terminal: Claude Code, Cursor, Zed, or any MCP-aware agent. No drag handles. No per-seat fees.
+
+## Why
+
+DocuSign assumes a person with a cursor, dragging signature boxes onto a PDF and paying per seat. SwiftSign assumes code. It is API-first and agent-native: a script or an AI agent can mint a key, send a legally binding contract, track it to completion, and pull back the sealed PDF and Certificate of Completion, end to end, without a browser.
+
+## What you get
+
+- **REST API** at `/api/v1/envelopes`, bearer-token auth, quota-enforced.
+- **MCP server** ([swiftsign-mcp](https://github.com/shahdadk/swiftsign-mcp)) with 11 tools so agents can sign documents directly, including agent self-signup and a confirm gate on live sends.
+- **SDKs** for JavaScript and Python.
+- **Signer flow** with no account required: a secure signing link, e-sign consent, and signature capture by draw, type, or upload.
+- **Sealed PDFs** with a SHA-256 hash, full audit trail, and a Certificate of Completion.
+- **DocuSign importer** so you can bring existing templates across.
+- **Compliant** under ESIGN, UETA (United States), PIPEDA, and the Ontario Electronic Commerce Act (Canada).
+
+## Use it from an agent
+
+```bash
+claude mcp add swiftsign -- npx -y swiftsign-mcp
+```
+
+```
+"Send the MSA at ./contracts/Acme_MSA.pdf to john@acme.com for signing,
+ with a signature field at the bottom."
+```
+
+The agent mints a sandbox key if it has none, places the fields, emails the signer a link, and reports back when it is sealed. See [swiftsign-mcp](https://github.com/shahdadk/swiftsign-mcp) for the full tool list.
 
 ## Stack
 
 - Next.js 16.2 (App Router, Turbopack, React 19)
-- Prisma 7 (preview) + Neon PostgreSQL via `@prisma/adapter-pg`
-- Cloudflare R2 (S3-compatible) for PDFs + page images
+- Prisma 7 + Neon PostgreSQL via `@prisma/adapter-pg`
+- Cloudflare R2 (S3-compatible) for PDFs and page images
 - Resend for transactional email
 - Stripe for billing (Free / Pro $15 / Team $79, monthly)
-- Upstash Redis for rate limiting
-- Sentry for error tracking
+- Upstash Redis for rate limiting, Sentry for error tracking
 
-## Setup on a fresh machine
+## Architecture
+
+- `/api/v1/envelopes`: public REST API; bearer-token auth via `Authorization: Bearer <apiKey>`. Quota enforced (5/mo on Free, unlimited on Pro/Team).
+- `/sign/[token]` and `/api/sign/[token]`: recipient signing flow. No account; the `signingToken` is the only credential.
+- `/dashboard/*`: sender UI. Cookie session via `swiftsign_session`. Envelopes, billing, settings (API key, sessions), webhooks.
+- `/api/stripe/webhook`: Stripe to DB sync (subscription and plan).
+- `/api/cron/webhook-retry`: runs every 5 minutes via `vercel.json` to retry failed outbound webhook deliveries.
+
+## Development
 
 ```bash
 git clone https://github.com/shahdadk/swiftsign.git
@@ -20,83 +65,30 @@ cd swiftsign
 ./scripts/bootstrap.sh
 ```
 
-The bootstrap script installs Vercel CLI, logs you in (browser auth), links the
-checkout to the SwiftSign Vercel project, pulls production env vars into
-`.env.local`, and runs `npm install`. After it finishes, run `npm run dev` and
-you're operational.
+The bootstrap script installs the Vercel CLI, logs you in, links the checkout to the SwiftSign Vercel project, pulls production env vars into `.env.local`, and runs `npm install`. Then `npm run dev` and you are operational.
 
-## Manual local development
+Manual setup:
 
 ```bash
-# Install (legacy-peer-deps is pinned in .npmrc, required for React 19 / Next 16)
-npm install
-
-# Generate the Prisma client (writes to src/generated/prisma/, gitignored)
-npx prisma generate
-
-# Apply schema migrations to your dev DB
-npx prisma migrate deploy
-
-# Run the dev server
-npm run dev
+npm install                  # legacy-peer-deps is pinned in .npmrc (React 19 / Next 16)
+npx prisma generate          # writes the Prisma client to src/generated/prisma/
+npx prisma migrate deploy    # apply schema migrations to your dev DB
+npm run dev                  # dev server on port 3000
 ```
 
-Copy `.env.local.example` to `.env.local` and fill in the values, or run
-`./scripts/bootstrap.sh` to pull them from Vercel.
+Common commands:
 
-## Commands
+- `npm run dev`: start the dev server on port 3000
+- `npm run build`: production build (Turbopack)
+- `npm run start`: run the built server
+- `npm run lint`: ESLint
+- `npx prisma migrate dev --name <slug>`: create a new migration
+- `npx tsx prisma/seed.ts`: seed a local user
 
-- `npm run dev` — start dev server on port 3000
-- `npm run build` — production build (Turbopack)
-- `npm run start` — run the built server
-- `npm run lint` — ESLint
-- `npx prisma generate` — regenerate the Prisma client
-- `npx prisma migrate dev --name <slug>` — create a new migration
-- `npx tsx prisma/seed.ts` — seed a local user (manual)
+### Deploying to Vercel
 
-## Deploying to Vercel
+Provision Neon (PostgreSQL), Cloudflare R2, Resend, Stripe (Pro and Team products plus a webhook on `/api/stripe/webhook`), Upstash Redis, and Sentry. Set the env vars from `.env.local.example` on the Vercel project (Production and Preview), connect the repo, and push to `main`. Vercel runs `npx prisma generate` and `next build`. Apply schema once with `npx prisma migrate deploy`. Verify at `/api/healthcheck`.
 
-1. **Provision services**:
-   - Neon PostgreSQL database; copy the pooled connection string to `DATABASE_URL`.
-   - Cloudflare R2 bucket; create an API token with read/write; copy account ID, access key ID, secret, bucket name.
-   - Resend domain (verify DNS for the `EMAIL_FROM` domain) and an API key.
-   - Stripe products: SwiftSign Pro ($15/mo recurring), SwiftSign Team ($79/mo recurring); copy price IDs. Enable Stripe Tax if collecting GST/HST/VAT. Set the customer portal return URL to `https://swiftsign.ca/dashboard/billing` and enable cancel + payment-method update.
-   - Stripe webhook endpoint: `https://swiftsign.ca/api/stripe/webhook`, listening for `checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.payment_failed`. Copy the signing secret.
-   - Upstash Redis instance for rate limiting; copy REST URL and token.
-   - Sentry project (Next.js); copy the DSN.
-   - Generate a `CRON_SECRET` (16+ random chars). Vercel cron will pass this as `Authorization: Bearer <CRON_SECRET>`.
+### MCP server
 
-2. **Set environment variables** on the Vercel project (Production + Preview). See `.env.local.example` for the full list.
-
-3. **Deploy**: connect the repo, push to `main`. Vercel runs `npx prisma generate` and `next build` from `package.json`.
-
-   Run schema migrations once via `npx prisma migrate deploy` — locally, or as part of a build hook. Subsequent deploys re-apply automatically if you wire it into the build command.
-
-4. **Verify**: visit `/api/healthcheck`. Returns `{ status: "ok" }` with DB and R2 checks green.
-
-## Architecture
-
-- `/api/v1/envelopes` — public REST API; bearer-token auth via `Authorization: Bearer <apiKey>`. Quota enforced (5/mo on Free, unlimited on Pro/Team).
-- `/sign/[token]` + `/api/sign/[token]` — recipient signing flow. No account; `signingToken` is the only credential.
-- `/dashboard/*` — sender UI. Cookie session via `swiftsign_session`. Pages: envelopes list, envelope detail, billing, settings (API key + sessions), webhooks.
-- `/api/stripe/webhook` — Stripe → DB sync (subscription + plan).
-- `/api/cron/webhook-retry` — runs every 5 minutes via `vercel.json` to retry failed outbound webhook deliveries.
-
-## MCP server
-
-Independent npm package at `mcp/`. Build + publish:
-
-```bash
-cd mcp
-npm install
-npm run build
-npm publish
-```
-
-Users install with:
-
-```bash
-claude mcp add swiftsign -- npx -y swiftsign-mcp
-```
-
-Configure with `SWIFTSIGN_API_KEY` (and optionally `SWIFTSIGN_API_URL` for self-hosted instances).
+The MCP server has its own repository at [swiftsign-mcp](https://github.com/shahdadk/swiftsign-mcp) and is published to npm as [`swiftsign-mcp`](https://www.npmjs.com/package/swiftsign-mcp).
