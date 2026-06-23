@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 300" width="1280" height="300" fill="none" font-family="'Helvetica Neue', 'Inter', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A0A0B"/>
+      <stop offset="1" stop-color="#0F0F13"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="0.55" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+    <radialGradient id="aur" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#6366F1" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#6366F1" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="55"/></filter>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#FFFFFF" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="300" fill="url(#bg)"/>
+  <rect width="1280" height="300" fill="url(#grid)"/>
+  <g filter="url(#soft)">
+    <circle cx="1060" cy="150" r="180" fill="url(#aur)">
+      <animateTransform attributeName="transform" type="translate" values="0 0; 35 25; 0 0" dur="18s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- eyebrow -->
+  <text x="84" y="86" font-size="14" letter-spacing="5" fill="#8B8B94" font-family="'SF Mono','Consolas','Menlo',monospace">AI-NATIVE E-SIGNATURES</text>
+
+  <!-- wordmark -->
+  <text x="80" y="160" font-size="68" font-weight="700" letter-spacing="-1.5" fill="#FAFAFA">Swift<tspan fill="url(#accent)">Sign</tspan></text>
+
+  <!-- signature flourish (draws in) -->
+  <path d="M88 192 C 150 168, 196 214, 256 188 S 360 156, 420 190 S 500 210, 548 176 C 572 159, 560 196, 596 182"
+        fill="none" stroke="url(#accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"
+        stroke-dasharray="760" stroke-dashoffset="760">
+    <animate attributeName="stroke-dashoffset" from="760" to="0" dur="1.8s" begin="0.4s" fill="freeze" calcMode="spline" keySplines="0.16 1 0.3 1" keyTimes="0;1"/>
+  </path>
+
+  <!-- supporting copy -->
+  <text x="84" y="246" font-size="20" fill="#C7C7CC">Send, track, and seal contracts from your terminal.</text>
+
+  <!-- footer -->
+  <text x="84" y="278" font-size="13.5" letter-spacing="1" fill="#5B5B63" font-family="'SF Mono','Consolas','Menlo',monospace">swiftsign.ca&#160;&#160;&#160;&#183;&#160;&#160;&#160;MCP-native&#160;&#160;&#160;&#183;&#160;&#160;&#160;ESIGN / UETA / PIPEDA</text>
+</svg>
