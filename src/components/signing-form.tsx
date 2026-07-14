@@ -107,18 +107,16 @@ export function SigningForm({
   // no live disclosure was passed.
   const consentVersion = disclosure?.version ?? "1.0";
 
-  // Pre-fill signature/initials fields if we have saved adoptions
-  const prefilledFields = initialFields.map((f) => {
-    if (f.type === "SIGNATURE" && savedSignature && !f.value) {
-      return { ...f, value: savedSignature };
-    }
-    if (f.type === "INITIALS" && savedInitials && !f.value) {
-      return { ...f, value: savedInitials };
-    }
-    return f;
-  });
-
-  const [fields, setFields] = useState<FieldData[]>(prefilledFields);
+  // Saved adoptions are never pre-stamped into fields: the signer must click
+  // each signature field (and therefore see its placement) before the saved
+  // signature is applied. handleFieldClick does the one-tap apply.
+  const [fields, setFields] = useState<FieldData[]>(initialFields);
+  const [savedSigClean, setSavedSigClean] = useState<string | undefined>(
+    savedSignature
+  );
+  const [savedInitialsClean, setSavedInitialsClean] = useState<
+    string | undefined
+  >(savedInitials);
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [showDeclineDialog, setShowDeclineDialog] = useState(false);
@@ -202,6 +200,19 @@ export function SigningForm({
   // which also upgrades the signer's saved adoption for future documents.
   useEffect(() => {
     let cancelled = false;
+    const clean = async (src: string): Promise<string | null> => {
+      try {
+        const img = await loadImageElement(src);
+        const processed = processSignatureSource(img, {
+          removeBackground: true,
+          padding: 12,
+        });
+        return processed?.dataUrl ?? null;
+      } catch {
+        // Keep the original value — the server normalizes again at seal time.
+        return null;
+      }
+    };
     const normalize = async () => {
       const candidates = fields.filter(
         (f) =>
@@ -209,23 +220,23 @@ export function SigningForm({
           f.value?.startsWith("data:image/")
       );
       for (const f of candidates) {
-        try {
-          const img = await loadImageElement(f.value!);
-          const processed = processSignatureSource(img, {
-            removeBackground: true,
-            padding: 12,
-          });
-          if (!cancelled && processed) updateFieldValue(f.id, processed.dataUrl);
-        } catch {
-          // Keep the original value — the server normalizes again at seal time.
-        }
+        const cleaned = await clean(f.value!);
+        if (!cancelled && cleaned) updateFieldValue(f.id, cleaned);
+      }
+      if (savedSignature?.startsWith("data:image/")) {
+        const cleaned = await clean(savedSignature);
+        if (!cancelled && cleaned) setSavedSigClean(cleaned);
+      }
+      if (savedInitials?.startsWith("data:image/")) {
+        const cleaned = await clean(savedInitials);
+        if (!cancelled && cleaned) setSavedInitialsClean(cleaned);
       }
     };
     void normalize();
     return () => {
       cancelled = true;
     };
-    // Mount-only: normalizes the server-provided prefills exactly once.
+    // Mount-only: normalizes API-submitted values + saved adoptions once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -280,7 +291,22 @@ export function SigningForm({
 
     switch (field.type) {
       case "SIGNATURE":
+        // One-tap apply of the saved adoption; the click on the field itself
+        // is the affirmative act. Re-clicking a filled field opens the modal
+        // to redraw or replace.
+        if (!field.value && savedSigClean) {
+          updateFieldValue(fieldId, savedSigClean);
+          setActiveFieldId(null);
+          break;
+        }
+        setShowSignatureModal(true);
+        break;
       case "INITIALS":
+        if (!field.value && savedInitialsClean) {
+          updateFieldValue(fieldId, savedInitialsClean);
+          setActiveFieldId(null);
+          break;
+        }
         setShowSignatureModal(true);
         break;
       case "NAME":
