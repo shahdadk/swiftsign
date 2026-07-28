@@ -106,7 +106,7 @@ envelope.voided`,
 signed_at: 2026-03-14T17:04:11Z
 ip: 50.18.44.201
 location: CA / Ontario
-compliance: ESIGN, UETA, PIPEDA`,
+compliance: ESIGN, UETA, Ontario ECA`,
     },
   ];
   return (
@@ -252,13 +252,6 @@ export function FinalCTA() {
             Read the docs
           </Link>
         </div>
-        <div className="finalcta-meta mono">
-          <span>free during beta</span>
-          <span className="sep">·</span>
-          <span>instant API key</span>
-          <span className="sep">·</span>
-          <span>no sales call</span>
-        </div>
       </div>
     </section>
   );
@@ -283,7 +276,7 @@ export function Footer() {
             <span className="sep">·</span>
             <span>UETA</span>
             <span className="sep">·</span>
-            <span>PIPEDA</span>
+            <span>Ontario ECA</span>
             <span className="sep">·</span>
             <span>SHA-256 sealed</span>
           </div>
@@ -291,37 +284,34 @@ export function Footer() {
         <div className="footer-cols">
           <div>
             <h4 className="mono">Product</h4>
-            <a href="#demo">Terminal demo</a>
-            <a href="#how">How it works</a>
-            <a href="#pricing">Pricing</a>
-            <Link href="/docs">Docs</Link>
+            <Link href="/#demo">Terminal demo</Link>
+            <Link href="/#how">How it works</Link>
+            <Link href="/pricing">Pricing</Link>
+            <Link href="/trust">Trust &amp; security</Link>
           </div>
           <div>
             <h4 className="mono">Developers</h4>
-            <Link href="/docs">MCP server</Link>
-            <Link href="/docs#api">REST API</Link>
-            <Link href="/docs#webhooks">Webhooks</Link>
-            <a href="https://github.com" target="_blank" rel="noreferrer">
+            <Link href="/docs">Documentation</Link>
+            <Link href="/reference">API explorer</Link>
+            <Link href="/guides/e-signature-api-for-ai-coding-tools">Integration guide</Link>
+            <a href="https://github.com/shahdadk/swiftsign" target="_blank" rel="noreferrer">
               GitHub
             </a>
           </div>
           <div>
-            <h4 className="mono">Company</h4>
-            <a href="#">Blog</a>
-            <a href="#">Legal</a>
-            <a href="#">Privacy</a>
-            <a href="#">Contact</a>
+            <h4 className="mono">Legal</h4>
+            <Link href="/legal/terms">Terms of Service</Link>
+            <Link href="/legal/privacy">Privacy Policy</Link>
+            <Link href="/legal/dpa">Data Processing Addendum</Link>
+            <Link href="/legal/acceptable-use">Acceptable Use</Link>
+            <Link href="/legal/subprocessors">Subprocessors</Link>
+            <a href="mailto:support@swiftsign.ca">Contact</a>
           </div>
         </div>
       </div>
       <div className="container footer-bottom mono">
-        <span>© 2026 SwiftSign Labs, Inc.</span>
-        <span>
-          v0.4.1 ·{" "}
-          <a href="#" className="footer-dim">
-            changelog
-          </a>
-        </span>
+        <span>© 2026 SwiftSign</span>
+        <span>Ontario, Canada</span>
       </div>
     </footer>
   );

@@ -24,11 +24,6 @@ export default function Home() {
         <div className="blob blob-b" style={{ top: "-80px", right: "-160px" }} />
 
         <div className="container hero-inner">
-          <div className="kicker">
-            <span className="dot" />
-            <span>Free during beta · instant API key</span>
-          </div>
-
           <h1 className="hero-h1">
             AI-native
             <br />
@@ -54,7 +49,7 @@ export default function Home() {
 
           <div className="hero-trust mono">
             <span>
-              <Shield size={12} /> ESIGN · UETA · PIPEDA compliant
+              <Shield size={12} /> Designed for ESIGN · UETA · Canadian e-sign laws
             </span>
             <span className="sep">·</span>
             <span>SHA-256 sealed PDFs</span>

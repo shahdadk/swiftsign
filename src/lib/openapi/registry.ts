@@ -305,6 +305,8 @@ const SignupResult = z
     message: z.string(),
     verify_url: z.string().url(),
     docs_url: z.string().url(),
+    terms_url: z.string().url(),
+    privacy_url: z.string().url(),
   })
   .openapi('SignupResult')
 
@@ -420,7 +422,9 @@ registry.registerPath({
   summary: 'Provision a sandbox account + sk_test_ key',
   description:
     'Unauthenticated. One call creates an account and returns a TEST key so an agent or ' +
-    'curl is productive immediately. No browser required.',
+    'curl is productive immediately. No browser required. Creating an account constitutes ' +
+    'acceptance of the Terms of Service at /legal/terms and acknowledgement of the Privacy ' +
+    'Policy at /legal/privacy.',
   security: [],
   request: {
     body: { content: { 'application/json': { schema: SignupBody } } },

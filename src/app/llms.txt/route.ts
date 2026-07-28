@@ -37,6 +37,7 @@ Completed documents get a SHA-256 integrity hash and a Certificate of Completion
 - [Privacy Policy](https://swiftsign.ca/legal/privacy)
 - [Data Processing Addendum](https://swiftsign.ca/legal/dpa)
 - [Acceptable Use Policy](https://swiftsign.ca/legal/acceptable-use)
+- [Subprocessors](https://swiftsign.ca/legal/subprocessors)
 `;
 
 export function GET() {

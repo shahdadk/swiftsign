@@ -199,6 +199,8 @@ export interface SignupResult {
   message?: string;
   verify_url?: string;
   docs_url?: string;
+  terms_url?: string;
+  privacy_url?: string;
   [key: string]: unknown;
 }
 

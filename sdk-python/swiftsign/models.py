@@ -41,6 +41,8 @@ class SignupResult(_Base):
     message: Optional[str] = None
     verify_url: Optional[str] = None
     docs_url: Optional[str] = None
+    terms_url: Optional[str] = None
+    privacy_url: Optional[str] = None
 
 
 class Envelope(_Base):

@@ -49,6 +49,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: `${BASE}/legal`,
+      lastModified,
+      changeFrequency: "yearly",
+      priority: 0.4,
+    },
+    {
       url: `${BASE}/legal/privacy`,
       lastModified,
       changeFrequency: "yearly",
@@ -70,6 +76,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${BASE}/legal/acceptable-use`,
       lastModified,
       changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${BASE}/legal/subprocessors`,
+      lastModified,
+      changeFrequency: "monthly",
       priority: 0.3,
     },
   ];

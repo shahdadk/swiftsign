@@ -21,7 +21,7 @@ export const PLANS: Record<Plan, PlanConfig> = {
       '5 envelopes per month',
       'MCP server access',
       'REST API + bearer auth',
-      'ESIGN/UETA/PIPEDA compliant sealed PDFs',
+      'ESIGN/UETA-ready sealed PDFs',
     ],
   },
   PRO: {

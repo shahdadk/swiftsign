@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, Check, Copy } from "./icons";
 
@@ -102,6 +103,11 @@ export function SignupCta({ label = "Get a free test key" }: { label?: string })
           </>
         )}
       </button>
+      <p className="signup-legal">
+        By creating a key, you agree to the{" "}
+        <Link href="/legal/terms">Terms of Service</Link> and acknowledge the{" "}
+        <Link href="/legal/privacy">Privacy Policy</Link>.
+      </p>
       {error && (
         <p className="signup-error mono" role="alert">
           {error}

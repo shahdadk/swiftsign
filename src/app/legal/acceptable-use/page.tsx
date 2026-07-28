@@ -1,77 +1,160 @@
-import Link from 'next/link';
+import type { Metadata } from "next";
+import Link from "next/link";
+import { LEGAL_LAST_UPDATED } from "@/lib/legal";
 
-export const metadata = {
-  title: 'SwiftSign — Acceptable Use Policy',
+export const metadata: Metadata = {
+  title: "Acceptable Use Policy · SwiftSign",
+  description:
+    "Rules that protect SwiftSign recipients, customers, infrastructure, and electronic-signature workflows from abuse.",
 };
 
 export default function AcceptableUsePage() {
   return (
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-gray-800">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Acceptable Use Policy</h1>
-      <p className="text-sm text-gray-500 mb-10">
-        This policy is part of our{' '}
-        <Link href="/legal/terms" className="text-blue-600 hover:underline">
-          Terms of Service
-        </Link>
-        .
-      </p>
-
-      <section className="space-y-3 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900">1. Purpose</h2>
-        <p>
-          This policy describes uses of SwiftSign that are prohibited. It exists to keep the service
-          safe, lawful, and reliable for everyone. Using SwiftSign means you agree to follow it.
+    <main className="legal-document">
+      <header className="legal-document-header">
+        <div className="eyebrow">Legal</div>
+        <h1>Acceptable Use Policy</h1>
+        <p className="legal-version mono">
+          Last updated {LEGAL_LAST_UPDATED}
         </p>
-      </section>
+        <p className="legal-lede">
+          This policy is part of the{" "}
+          <Link href="/legal/terms">Terms of Service</Link> and applies to every
+          SwiftSign account, API key, integration, document, and signing
+          request.
+        </p>
+      </header>
 
-      <section className="space-y-3 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900">2. Prohibited content and conduct</h2>
+      <section>
+        <h2>1. Lawful and authorized use</h2>
         <p>You may not use SwiftSign to:</p>
-        <ul className="list-disc pl-6 space-y-1">
-          <li>Break the law, infringe intellectual property, or violate the rights of others.</li>
-          <li>Send fraudulent, deceptive, or forged documents, or impersonate any person or entity.</li>
+        <ul>
           <li>
-            Distribute malware, phishing content, or unsolicited bulk messages, or attempt to harvest
-            recipient data for unrelated purposes.
+            violate law, regulation, court order, contract, intellectual
+            property, privacy, publicity, or other rights;
           </li>
           <li>
-            Transmit content that is unlawful, harassing, defamatory, or otherwise objectionable.
+            impersonate a person or organization, forge authority, falsify an
+            audit trail, or misrepresent who sent or signed a document;
           </li>
           <li>
-            Collect or process sensitive data (such as health or payment-card data) without the legal
-            basis and safeguards required for it.
+            send fraudulent, deceptive, coercive, exploitative, or misleading
+            documents or signing requests;
+          </li>
+          <li>
+            sign on another person’s behalf without valid authorization; or
+          </li>
+          <li>
+            use electronic execution for a document that applicable law
+            excludes or subjects to unmet signing, consent, witnessing,
+            notarization, delivery, or retention requirements.
           </li>
         </ul>
       </section>
 
-      <section className="space-y-3 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900">3. System integrity</h2>
+      <section>
+        <h2>2. Recipient protection and messaging</h2>
         <p>You may not:</p>
-        <ul className="list-disc pl-6 space-y-1">
-          <li>Probe, scan, or test the vulnerability of the service without authorization.</li>
-          <li>Circumvent rate limits, quotas, authentication, or other access controls.</li>
-          <li>Interfere with or disrupt the service or the infrastructure that runs it.</li>
-          <li>Resell or sublicense the service in a way not permitted by your plan.</li>
+        <ul>
+          <li>
+            send unsolicited bulk signing requests, spam, phishing, malware,
+            or messages unrelated to a legitimate document workflow;
+          </li>
+          <li>
+            harvest, buy, or use recipient data without a lawful basis and
+            appropriate notice;
+          </li>
+          <li>
+            use misleading subject lines, sender identities, domains, or
+            document descriptions;
+          </li>
+          <li>
+            repeatedly contact a recipient who has objected, declined, or asked
+            not to receive further requests; or
+          </li>
+          <li>
+            use the service to threaten, harass, discriminate against, or
+            exploit a person.
+          </li>
         </ul>
       </section>
 
-      <section className="space-y-3 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900">4. Enforcement</h2>
+      <section>
+        <h2>3. Sensitive and regulated data</h2>
         <p>
-          We may investigate suspected violations and may suspend or terminate access, remove content,
-          or take other action we consider appropriate. Serious violations may be reported to law
-          enforcement.
+          You may not submit protected health information, full payment-card
+          data, government identification numbers, financial-account
+          credentials, biometric identifiers, children’s data, or other
+          regulated or highly sensitive information unless you have confirmed
+          that the service, your plan, and your configuration are appropriate
+          and you have all required agreements, notices, consents, and
+          safeguards.
+        </p>
+        <p>
+          SwiftSign is not represented as compliant with a specialized regime
+          such as HIPAA, PCI DSS storage requirements, or qualified electronic
+          signatures under eIDAS unless SwiftSign has expressly agreed to that
+          use in writing.
         </p>
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold text-gray-900">5. Reporting</h2>
+      <section>
+        <h2>4. System and service integrity</h2>
+        <p>You may not:</p>
+        <ul>
+          <li>
+            probe, scan, or test the service for vulnerabilities without
+            written authorization;
+          </li>
+          <li>
+            disrupt the service, introduce malicious code, or interfere with
+            another user or recipient;
+          </li>
+          <li>
+            bypass authentication, confirmation gates, rate limits, quotas,
+            plan restrictions, or safety controls;
+          </li>
+          <li>
+            reverse engineer the hosted service except where the restriction is
+            prohibited by law;
+          </li>
+          <li>
+            use automated means that impose an unreasonable load or create
+            abusive sending patterns; or
+          </li>
+          <li>
+            resell, sublicense, or provide shared access to the service except
+            as permitted by your plan or a written agreement.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. Enforcement</h2>
         <p>
-          To report abuse or a violation of this policy, email{' '}
-          <a href="mailto:support@swiftsign.ca" className="text-blue-600 hover:underline">
-            support@swiftsign.ca
-          </a>
-          .
+          We may investigate suspected violations and may rate-limit, block,
+          remove, quarantine, or preserve content; revoke credentials; or
+          suspend or terminate access. We consider the severity, recurrence,
+          recipient impact, legal risk, and whether immediate action is needed
+          to protect people or systems. Where appropriate, we will provide
+          notice and an opportunity to respond.
+        </p>
+        <p>
+          We may report suspected unlawful conduct to affected parties or
+          authorities and preserve relevant information as permitted or
+          required by law.
+        </p>
+      </section>
+
+      <section>
+        <h2>6. Reporting abuse</h2>
+        <p>
+          Report suspicious signing mail, fraudulent documents, impersonation,
+          or other abuse to{" "}
+          <a href="mailto:abuse@swiftsign.ca">abuse@swiftsign.ca</a>. Include
+          the envelope link or message headers when safe to do so. For
+          account-support questions, email{" "}
+          <a href="mailto:support@swiftsign.ca">support@swiftsign.ca</a>.
         </p>
       </section>
     </main>

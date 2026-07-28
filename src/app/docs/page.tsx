@@ -51,6 +51,11 @@ export default function DocsPage() {
             unauthenticated endpoint — it provisions an account and returns a{" "}
             <code>sk_test_</code> key on the spot.
           </p>
+          <p>
+            Creating an account means you agree to the{" "}
+            <Link href="/legal/terms">Terms of Service</Link> and acknowledge the{" "}
+            <Link href="/legal/privacy">Privacy Policy</Link>.
+          </p>
           <pre>
             <code>{`import SwiftSign from "swiftsign";
 

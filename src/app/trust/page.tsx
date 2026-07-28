@@ -182,15 +182,15 @@ export default function TrustPage() {
               <p style={{ fontSize: 15 }}>
                 Documents signed through SwiftSign are intended to be legally
                 binding electronic signatures under applicable law, including
-                the U.S. ESIGN Act and UETA and Canada&rsquo;s PIPEDA. Each
-                completed envelope produces a Certificate of Completion
-                recording the audit trail of the signing session. You are
-                responsible for confirming that electronic signatures are
-                valid for your specific document and jurisdiction.
+                the U.S. ESIGN Act and UETA and Canadian electronic-commerce
+                legislation. Each completed envelope produces a Certificate of
+                Completion recording the audit trail of the signing session.
+                You are responsible for confirming that electronic signatures
+                are valid for your specific document and jurisdiction.
               </p>
               <div className="hero-trust mono">
                 <span>
-                  <Shield size={12} /> ESIGN · UETA · PIPEDA compliant
+                  <Shield size={12} /> Designed for ESIGN · UETA · Canadian e-sign laws
                 </span>
                 <span className="sep">·</span>
                 <span>SHA-256 sealed PDFs</span>

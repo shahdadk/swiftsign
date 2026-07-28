@@ -25,16 +25,14 @@ export function NavBar() {
         <nav className="nav-links mono">
           <Link href="/docs">Docs</Link>
           <Link href="/pricing">Pricing</Link>
-          <a href="#" className="nav-dim">
-            Changelog
-          </a>
+          <Link href="/trust">Trust</Link>
           <Link href="/dashboard" className="nav-dim">
             Dashboard
           </Link>
         </nav>
         <div className="nav-cta">
           <a
-            href="https://github.com"
+            href="https://github.com/shahdadk/swiftsign"
             className="icon-link"
             aria-label="GitHub"
             target="_blank"
@@ -42,9 +40,9 @@ export function NavBar() {
           >
             <Github />
           </a>
-          <a href="#cta" className="btn btn-primary">
+          <Link href="/#cta" className="btn btn-primary">
             Get started <ArrowRight />
-          </a>
+          </Link>
         </div>
       </div>
     </header>

@@ -85,6 +85,8 @@ export async function POST(request: Request) {
           'Sandbox account created. This is a TEST key — sends are watermarked and free. Verify your email and add a card to go live.',
         verify_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard/login`,
         docs_url: `${env.NEXT_PUBLIC_APP_URL}/docs`,
+        terms_url: `${env.NEXT_PUBLIC_APP_URL}/legal/terms`,
+        privacy_url: `${env.NEXT_PUBLIC_APP_URL}/legal/privacy`,
       },
       { status: 201 }
     )
