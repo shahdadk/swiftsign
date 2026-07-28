@@ -89,7 +89,7 @@ const jsonLd = {
           "@type": "Offer",
           name: "Sandbox",
           description:
-            "Free forever. Unlimited watermarked test envelopes with an instant sandbox API key.",
+            "Free forever. Unlimited watermarked test envelopes with a sandbox API key.",
           price: "0",
           priceCurrency: "USD",
           url: "https://swiftsign.ca/pricing",

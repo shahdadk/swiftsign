@@ -145,7 +145,7 @@ export function Pricing() {
       blurb: "For building and testing agent flows.",
       features: [
         "Unlimited test envelopes",
-        "Instant sk_test_ key, no account",
+        "sk_test_ key, no account",
         "Watermarked, non-binding sends",
         "MCP server + REST API",
         "Webhook subscriptions",

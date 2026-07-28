@@ -33,7 +33,7 @@ export default function Home() {
           <p className="hero-sub">
             Send, track, and seal contracts from your terminal.
             <br />
-            No drag handles. No per-seat fees. No sales call.
+            No drag handles. No per-seat fees.
           </p>
 
           <div className="hero-install">

@@ -7,7 +7,7 @@ import { ArrowRight, Check, Copy } from "./icons";
 /**
  * Self-serve sandbox-key widget. Replaces the old "Request access" mailto gate.
  * One click -> email -> POST /api/v1/signup -> an sk_test_ key on the spot,
- * the same instant-key path /docs already advertises.
+ * the same sandbox-key path /docs already advertises.
  */
 export function SignupCta({ label = "Get a free test key" }: { label?: string }) {
   const [open, setOpen] = useState(false);

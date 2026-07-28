@@ -8,7 +8,7 @@ import { SignupCta } from "@/components/landing/signup-cta";
 export const metadata: Metadata = {
   title: "DocuSign alternative for developers and AI coding tools · SwiftSign",
   description:
-    "SwiftSign is an e-signature API and MCP server built for developers and AI coding tools: an instant sandbox key with no sales call, $15/mo flat, and the whole signing loop inside your agent. An honest comparison with DocuSign.",
+    "SwiftSign is an e-signature API and MCP server built for developers and AI coding tools: a sandbox key, $15/mo flat, and the whole signing loop inside your agent. An honest comparison with DocuSign.",
 };
 
 const faqs = [
@@ -30,7 +30,7 @@ const faqs = [
   },
   {
     q: "Is there a sandbox?",
-    a: "Yes. POST /api/v1/signup returns an sk_test_ key instantly with just an email, no account and no browser. Test sends are watermarked, non-binding, and unlimited.",
+    a: "Yes. POST /api/v1/signup returns an sk_test_ key with just an email, no account and no browser. Test sends are watermarked, non-binding, and unlimited.",
   },
 ];
 
@@ -45,7 +45,7 @@ const faqJsonLd = {
 };
 
 const compare: Array<{ feature: string; swiftsign: string; docusign: string }> = [
-  { feature: "Get started", swiftsign: "Instant sandbox key, no sales call", docusign: "Account required; API plans via sales" },
+  { feature: "Get started", swiftsign: "Sandbox key, no account", docusign: "Account required; API plans via sales" },
   { feature: "MCP server", swiftsign: "First-party, stdio + hosted URL", docusign: "Yes (requires a DocuSign account)" },
   { feature: "Agent sends", swiftsign: "Confirm-gated draft on live keys", docusign: "Standard API send" },
   { feature: "Pricing", swiftsign: "$15/mo flat, fair-use 100/mo", docusign: "From $45/user/mo (Standard, list)" },
@@ -64,7 +64,7 @@ export default function DocuSignAlternativePage() {
         </h1>
         <p className="hero-sub" style={{ marginBottom: 8 }}>
           SwiftSign is an e-signature API and MCP server you can wire into Claude Code, Cursor, or any
-          backend in minutes: an instant sandbox key with no sales call, $15 a month flat, and the whole
+          backend in minutes: a sandbox key, $15 a month flat, and the whole
           signing loop, from key to sealed PDF, runnable inside your agent.
         </p>
         <p className="mono" style={{ fontSize: 13, color: "var(--ink-4)", marginBottom: 32 }}>

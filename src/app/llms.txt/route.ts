@@ -5,7 +5,7 @@ export const dynamic = "force-static";
 
 const BODY = `# SwiftSign
 
-> SwiftSign is an e-signature API and MCP server built for AI coding tools. One unauthenticated call (POST https://swiftsign.ca/api/v1/signup) returns an instant sk_test_ sandbox key, no account required. Sandbox is free forever with unlimited watermarked test envelopes. Pro is $15/month flat per workspace for live sends.
+> SwiftSign is an e-signature API and MCP server built for AI coding tools. One unauthenticated call (POST https://swiftsign.ca/api/v1/signup) returns an sk_test_ sandbox key, no account required. Sandbox is free forever with unlimited watermarked test envelopes. Pro is $15/month flat per workspace for live sends.
 
 Completed documents get a SHA-256 integrity hash and a Certificate of Completion recording the full audit trail: signer identity, email, timestamp, IP address, and signature method. Signatures are intended to be legally binding under the U.S. ESIGN Act, UETA, and Canada's electronic-commerce legislation.
 

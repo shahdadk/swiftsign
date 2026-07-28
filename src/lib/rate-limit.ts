@@ -117,7 +117,7 @@ export const dcrLimiter = safeLimit(
 )
 
 // Anti-abuse: accounts younger than 7 days get a live-send velocity cap.
-// Instant no-KYC keys + e-signature email is phishing infrastructure if left
+// Unauthenticated no-KYC keys + e-signature email is phishing infrastructure if left
 // open; one spam wave blacklists the sending domain for every customer.
 export const youngLiveSendLimiter = safeLimit(
   new Ratelimit({
