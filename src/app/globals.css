@@ -306,7 +306,14 @@ section { position: relative; }
   flex-wrap: wrap;
   justify-content: center;
 }
-.hero-trust svg { vertical-align: -2px; margin-right: 4px; }
+.hero-trust > span {
+  display: inline-flex;
+  align-items: center;
+}
+.hero-trust svg {
+  flex: 0 0 auto;
+  margin-right: 4px;
+}
 .sep { color: var(--ink-5); }
 
 /* ========== INSTALL CARD ========== */
