@@ -20,7 +20,6 @@ export function NavBar() {
         <Link href="/" className="nav-logo">
           <Logo />
           <span className="mono">swiftsign</span>
-          <span className="nav-beta mono">beta</span>
         </Link>
         <nav className="nav-links mono">
           <Link href="/docs">Docs</Link>
